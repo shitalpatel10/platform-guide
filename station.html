@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Station - Platform Guide</title>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#1E40AF',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Floating Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 80px;
+            /* Below navbar */
+            left: 20px;
+            width: 350px;
+            z-index: 1000;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .search-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 300px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b border-gray-100 z-50 h-16 flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
+            <div class="flex items-center">
+                <a href="index.html" class="flex items-center text-gray-500 hover:text-gray-900 transition-colors mr-4">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <span class="font-bold text-xl tracking-tight text-gray-900">Manage Station</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="platform.html" id="manage-platforms-link"
+                    class="hidden inline-flex items-center px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <i class="fa-solid fa-layer-group mr-2"></i> Manage Platforms
+                </a>
+                <button id="btn-edit-station" onclick="enableStationEditing()"
+                    class="hidden inline-flex items-center px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <i class="fa-solid fa-pen-to-square mr-2"></i> Edit Station
+                </button>
+                <button id="btn-save-station" onclick="saveStationChanges()"
+                    class="hidden inline-flex items-center px-4 py-2 bg-primary hover:bg-secondary text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Map Container -->
+    <div class="flex-grow relative">
+        <div id="map" class="w-full h-full bg-slate-50"></div>
+
+        <!-- Left Panel: Station Details -->
+        <div class="control-panel bg-white p-5 rounded-xl shadow-lg border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <i class="fa-solid fa-city text-primary mr-2"></i> Station Details
+            </h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station
+                        Name</label>
+                    <input type="text" id="station-name-input"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-gray-900 font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station
+                        Code</label>
+                    <input type="text" id="station-code-input"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm font-mono text-gray-900">
+                </div>
+
+                <div class="pt-4 border-t border-gray-100">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Location</h3>
+                    <div class="text-xs text-gray-600 space-y-1">
+                        <div class="flex justify-between">
+                            <span>Latitude:</span>
+                            <span id="lat-display" class="font-mono text-gray-900">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Longitude:</span>
+                            <span id="lng-display" class="font-mono text-gray-900">-</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 italic">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Drag the map marker to adjust precise location.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Search -->
+        <div class="search-panel bg-white p-2 rounded-xl shadow-lg border border-gray-100 flex items-center">
+            <i class="fa-solid fa-magnifying-glass text-gray-400 ml-2"></i>
+            <input type="text" id="location-search"
+                class="w-full px-3 py-1.5 border-none rounded-lg focus:ring-0 text-sm text-gray-900"
+                placeholder="Search location..." onkeydown="handleSearch(event)">
+            <button onclick="searchLocation()"
+                class="ml-1 p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-600 transition-colors">
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Location Selection Overlay -->
+    <div id="location-selection-overlay"
+        class="fixed inset-0 bg-gray-50 z-[2000] hidden flex flex-col items-center justify-center p-4">
+        <div class="max-w-md w-full text-center space-y-8">
+            <div>
+                <div
+                    class="mx-auto w-16 h-16 bg-blue-100 text-primary rounded-full flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-map-location-dot text-3xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900">Where is the station?</h2>
+                <p class="text-gray-500 mt-2">Search for a location or choose from popular cities to get started.</p>
+            </div>
+
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400"></i>
+                <input type="text" id="wizard-search-input"
+                    class="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm transition-all"
+                    placeholder="Search city or area..." onkeydown="if(event.key==='Enter') searchLocationWizard()">
+                <button onclick="searchLocationWizard()"
+                    class="absolute right-2 top-2 p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="selectPredefinedLocation('Amravati')"
+                    class="p-3 bg-white border border-gray-200 rounded-xl hover:border-primary hover:bg-blue-50 hover:text-primary transition-all font-medium text-gray-700 shadow-sm text-left flex items-center">
+                    <i class="fa-solid fa-location-dot mr-2 text-red-500"></i> Amravati
+                </button>
+                <button onclick="selectPredefinedLocation('Badnera')"
+                    class="p-3 bg-white border border-gray-200 rounded-xl hover:border-primary hover:bg-blue-50 hover:text-primary transition-all font-medium text-gray-700 shadow-sm text-left flex items-center">
+                    <i class="fa-solid fa-location-dot mr-2 text-red-500"></i> Badnera
+                </button>
+                <button onclick="selectPredefinedLocation('Dhamangaon')"
+                    class="p-3 bg-white border border-gray-200 rounded-xl hover:border-primary hover:bg-blue-50 hover:text-primary transition-all font-medium text-gray-700 shadow-sm text-left flex items-center">
+                    <i class="fa-solid fa-location-dot mr-2 text-red-500"></i> Dhamangaon
+                </button>
+                <button onclick="selectPredefinedLocation('Nagpur')"
+                    class="p-3 bg-white border border-gray-200 rounded-xl hover:border-primary hover:bg-blue-50 hover:text-primary transition-all font-medium text-gray-700 shadow-sm text-left flex items-center">
+                    <i class="fa-solid fa-location-dot mr-2 text-red-500"></i> Nagpur
+                </button>
+            </div>
+
+            <button onclick="useCurrentLocation()" class="text-sm text-primary hover:underline font-medium">
+                <i class="fa-solid fa-crosshairs mr-1"></i> Use my current location
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Drawing Controls (Bottom Center) -->
+    <div id="drawing-controls"
+        class="hidden absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-4 py-3 rounded-2xl shadow-xl z-[1000] flex items-center space-x-4 border border-gray-100">
+        <button id="btn-draw" onclick="startDrawing()"
+            class="flex flex-col items-center justify-center space-y-1 w-16 group">
+            <div
+                class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors text-gray-700">
+                <i class="fa-regular fa-square"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Draw</span>
+        </button>
+
+        <button id="btn-move" onclick="stopDrawing()"
+            class="flex flex-col items-center justify-center space-y-1 w-16 group">
+            <div
+                class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-primary ring-2 ring-primary ring-offset-2 transition-colors">
+                <i class="fa-solid fa-arrows-up-down-left-right"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Move</span>
+        </button>
+
+        <div class="w-px h-8 bg-gray-200"></div>
+
+        <button onclick="clearDrawing()" class="flex flex-col items-center justify-center space-y-1 w-16 group">
+            <div
+                class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors text-gray-700">
+                <i class="fa-solid fa-eraser"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Clear</span>
+        </button>
+
+        <div class="w-px h-8 bg-gray-200"></div>
+
+        <div class="flex flex-col space-y-1">
+            <button onclick="map.zoomIn()"
+                class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
+                <i class="fa-solid fa-plus text-xs"></i>
+            </button>
+            <button onclick="map.zoomOut()"
+                class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
+                <i class="fa-solid fa-minus text-xs"></i>
+            </button>
+        </div>
+
+        <div class="w-px h-8 bg-gray-200"></div>
+
+        <button onclick="openStationDetailsModal()"
+            class="flex flex-col items-center justify-center space-y-1 w-16 group">
+            <div
+                class="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-600 ring-2 ring-green-600 ring-offset-2 hover:bg-green-100 transition-colors">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Save</span>
+        </button>
+    </div>
+
+    <!-- Station Details Modal -->
+    <div id="station-details-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[2000] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div class="bg-primary px-6 py-4 flex items-center justify-between">
+                <h3 class="text-white font-bold text-lg">Station Details</h3>
+                <button onclick="cancelStationCreation()" class="text-white/80 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station
+                        Name</label>
+                    <input type="text" id="new-station-name"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="e.g. Nagpur Junction">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station
+                        Code</label>
+                    <input type="text" id="new-station-code"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="e.g. NGP">
+                </div>
+                <!-- Hidden inputs for geometry -->
+                <input type="hidden" id="new-station-lat">
+                <input type="hidden" id="new-station-lng">
+                <input type="hidden" id="new-station-zoom">
+
+                <button onclick="finalizeStationCreation()"
+                    class="w-full py-3 bg-primary hover:bg-secondary text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 mt-2">
+                    Create Station
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="script/main.js"></script>
+    <script>
+        // Page specific initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const stationId = urlParams.get('id');
+            const isNew = urlParams.get('new') === 'true';
+
+            if (stationId || isNew) {
+                initManageStation(stationId);
+            } else {
+                alert("No station ID provided!");
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+
+</html>

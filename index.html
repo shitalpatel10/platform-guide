@@ -1,14 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Platform Guide</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Railway Station Navigation System</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#1E40AF',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom Styles -->
     <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
-<body>
-    <h1>Platform Guide</h1>
+<body class="bg-gray-50 text-gray-800 antialiased min-h-screen">
 
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-train text-primary text-2xl mr-3"></i>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">Platform Guide</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="clearAllData()"
+                        class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Reset Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        <!-- Header Section -->
+        <div class="mb-10 text-center sm:text-left sm:flex sm:items-end sm:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Select a Station</h1>
+                <p class="text-gray-500">Manage maps, platforms, and facilities for your railway network.</p>
+            </div>
+        </div>
+
+        <!-- Station Grid -->
+        <div id="station-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Station Cars will be injected here by JS -->
+
+            <!-- Empty State (Hidden by default) -->
+            <div id="empty-state"
+                class="hidden col-span-full text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                <div
+                    class="w-16 h-16 bg-blue-50 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-plus text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">No stations yet</h3>
+                <p class="text-gray-500 mt-1 mb-6">Get started by creating your first station.</p>
+                <a href="station.html?new=true"
+                    class="inline-flex items-center px-4 py-2 bg-primary hover:bg-secondary text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    Create Station
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Floating Action Button (Mobile) -->
+    <a href="station.html?new=true"
+        class="fixed bottom-8 right-8 w-14 h-14 bg-primary hover:bg-secondary text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary z-40"
+        title="Add New Station">
+        <i class="fa-solid fa-plus text-xl"></i>
+    </a>
+
+    <!-- Add Station Modal removed -->
 
     <script src="script/main.js"></script>
 </body>

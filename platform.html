@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Platforms - Platform Guide</title>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#1E40AF',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        .platforms-list {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 320px;
+            z-index: 1000;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm border-b border-gray-100 z-50 h-16 flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
+            <div class="flex items-center">
+                <a href="index.html" class="flex items-center text-gray-500 hover:text-gray-900 transition-colors mr-4">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">Manage Platforms</span>
+                    <span id="station-name-header" class="text-sm text-gray-500 ml-2 font-medium"></span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="savePlatformChanges()"
+                    class="inline-flex items-center px-4 py-2 bg-primary hover:bg-secondary text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Map Container -->
+    <div class="flex-grow relative">
+        <div id="map" class="w-full h-full bg-slate-50"></div>
+
+        <!-- Platforms List Panel -->
+        <div class="platforms-list bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col">
+            <div class="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+                <h3 class="font-semibold text-gray-900">Platforms</h3>
+                <p class="text-xs text-gray-500 mt-1">Use the toolbar on the left to draw.</p>
+            </div>
+            <div id="platform-items" class="p-2 space-y-2">
+                <!-- Platform items injected here -->
+                <div class="text-center py-6 text-gray-400 text-sm italic">
+                    No platforms defined yet.
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Instruction -->
+        <div id="toast"
+            class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl z-[2000] text-sm font-medium flex items-center space-x-2 transition-all opacity-0 translate-y-10">
+            <i class="fa-solid fa-pen-ruler"></i>
+            <span>Use the draw tools to outline platforms on the map.</span>
+        </div>
+    </div>
+
+    <!-- Leaflet JS & Draw -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script src="script/main.js"></script>
+    <script>
+        // Page specific initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const stationId = urlParams.get('id');
+            if (stationId) {
+                initManagePlatforms(stationId);
+            } else {
+                alert("No station ID provided!");
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+
+</html>
