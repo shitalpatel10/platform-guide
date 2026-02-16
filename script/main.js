@@ -187,8 +187,8 @@ function initManageStation(stationId) {
 
     if (isNew) {
         // Wizard Mode
-        document.querySelector('.control-panel').classList.add('hidden');
-        document.querySelector('.search-panel').classList.add('hidden');
+        // document.querySelector('.control-panel').classList.add('hidden');
+        // document.querySelector('.search-panel').classList.add('hidden');
         document.getElementById('location-selection-overlay').classList.remove('hidden');
 
         // Init FeatureGroup for drawing
@@ -569,17 +569,34 @@ function saveStationChanges() {
 // --- Polygon Visibility Logic ---
 function updatePolygonButtons() {
     const hasPolygon = (polygonLayer !== null) || (typeof drawnItems !== 'undefined' && drawnItems.getLayers().length > 0);
-    const addBtn = document.getElementById('btn-add-polygon');
-    const clearBtn = document.getElementById('btn-clear-polygon');
+    const actionBtn = document.getElementById('btn-add-polygon');
 
-    // Only update if elements exist (might not be on station.html)
-    if (addBtn && clearBtn) {
+    // Ensure the other button is hidden if we are merging functionality, 
+    // or we can just ignore it. The user said "the button", implying one button changing state.
+    // I will hide the explicit clear button to be safe if it's there.
+    const clearBtn = document.getElementById('btn-clear-polygon');
+    if (clearBtn) clearBtn.classList.add('hidden');
+
+    if (actionBtn) {
+        // Always show the action button
+        actionBtn.classList.remove('hidden');
+
+        const iconContainer = actionBtn.querySelector('div');
+        const icon = actionBtn.querySelector('i');
+        const label = actionBtn.querySelector('span');
+
         if (hasPolygon) {
-            addBtn.classList.add('hidden');
-            clearBtn.classList.remove('hidden');
+            // State: Reset (Clear)
+            label.innerText = "Reset";
+            icon.className = "fa-solid fa-rotate-left"; // or fa-trash-can-arrow-up or just rotate-left
+            iconContainer.className = "w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors text-gray-700";
+            actionBtn.setAttribute('onclick', 'clearPolygon()');
         } else {
-            addBtn.classList.remove('hidden');
-            clearBtn.classList.add('hidden');
+            // State: Add Polygon
+            label.innerText = "Add Poly";
+            icon.className = "fa-solid fa-draw-polygon";
+            iconContainer.className = "w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors text-primary";
+            actionBtn.setAttribute('onclick', 'addPolygon()');
         }
     }
 }
@@ -587,6 +604,7 @@ function updatePolygonButtons() {
 function addPolygon() {
     startDrawing(true);
 }
+
 
 function clearPolygon() {
     if (confirm("Are you sure you want to clear the polygon?")) {
@@ -683,6 +701,7 @@ function performWizardSearch(query) {
 
 function setupWizardMap(lat, lng) {
     map.setView([lat, lng], 15);
+    updateLocationDisplay(lat, lng);
     // Hide overlay, show controls
     document.getElementById('location-selection-overlay').classList.add('hidden');
     document.getElementById('drawing-controls').classList.remove('hidden');

@@ -64,20 +64,19 @@
                 <a href="index.html" class="flex items-center text-gray-500 hover:text-gray-900 transition-colors mr-4">
                     <i class="fa-solid fa-arrow-left text-lg"></i>
                 </a>
-                <span class="font-bold text-xl tracking-tight text-gray-900 hidden sm:inline">Manage Station</span>
+                <button onclick="toggleStationDetailsCard()"
+                    class="flex flex-col items-start group cursor-pointer text-left ml-2">
+                    <h1 id="header-station-name"
+                        class="font-bold text-lg leading-none text-gray-900 group-hover:text-primary transition-colors flex items-center">
+                        New Station <i
+                            class="fa-solid fa-chevron-down text-[10px] ml-2 text-gray-400 group-hover:text-primary transition-colors opacity-50"></i>
+                    </h1>
+                    <span id="header-station-code"
+                        class="text-[10px] font-mono text-gray-500 mt-0.5 bg-gray-100 px-1.5 rounded group-hover:bg-blue-50 group-hover:text-primary transition-colors">---</span>
+                </button>
             </div>
 
-            <!-- Centered Station Name -->
-            <button onclick="toggleStationDetailsCard()"
-                class="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center group cursor-pointer">
-                <h1 id="header-station-name"
-                    class="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors flex items-center">
-                    New Station <i
-                        class="fa-solid fa-chevron-down text-xs ml-2 text-gray-400 group-hover:text-primary transition-colors"></i>
-                </h1>
-                <span id="header-station-code"
-                    class="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded group-hover:bg-blue-50 group-hover:text-primary transition-colors">---</span>
-            </button>
+            <!-- Right Side Actions -->
             <div class="flex items-center space-x-3">
                 <div
                     class="relative flex items-center bg-gray-100 rounded-lg px-3 py-2 mr-2 border border-transparent focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20 transition-all">
