@@ -88,8 +88,11 @@ function initHomePage() {
                     <button onclick="deleteStationFromIndex('${station.id}', event)" class="px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-red-50 hover:border-red-100 group-hover:border-red-200" title="Delete Station">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
-                    <a href="platform.html?id=${station.id}" onclick="event.stopPropagation()" class="flex-1 text-center px-3 py-2 text-sm font-medium text-white bg-primary hover:bg-secondary rounded-lg transition-colors shadow-sm">
-                        Manage Platforms
+                    <a href="platform.html?id=${station.id}" onclick="event.stopPropagation()" class="flex-1 text-center px-3 py-2 text-sm font-medium text-white bg-primary hover:bg-secondary rounded-lg transition-colors shadow-sm" title="Manage Platforms">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </a>
+                    <a href="services.html?id=${station.id}" onclick="event.stopPropagation()" class="flex-1 text-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors shadow-sm" title="Manage Services">
+                        <i class="fa-solid fa-location-dot text-indigo-500"></i>
                     </a>
                 </div>
             `;
@@ -241,8 +244,17 @@ function initManageStation(stationId) {
 
         // Show Manage Platforms Button
         const manageLink = document.getElementById('manage-platforms-link');
-        manageLink.href = `platform.html?id=${stationId}`;
-        manageLink.classList.remove('hidden');
+        if(manageLink) {
+            manageLink.href = `platform.html?id=${stationId}`;
+            manageLink.classList.remove('hidden');
+        }
+
+        // Show Manage Services Button
+        const manageServicesLink = document.getElementById('manage-services-link');
+        if(manageServicesLink) {
+            manageServicesLink.href = `services.html?id=${stationId}`;
+            manageServicesLink.classList.remove('hidden');
+        }
 
         // Show Edit Station Button - REMOVED
         // document.getElementById('btn-edit-station').classList.remove('hidden');
