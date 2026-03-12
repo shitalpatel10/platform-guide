@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Services - Platform Guide</title>
+    <title>Manage Infrastructure - Platform Guide</title>
 
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -50,7 +50,7 @@
             <!-- Right Column: Contextual Actions -->
             <div id="nav-right" class="flex items-center justify-end space-x-3">
                 <button onclick="recenterMap()" class="p-2.5 bg-white hover:bg-gray-50 text-gray-500 border border-gray-200 rounded-xl transition-all shadow-sm group" title="Recenter View">
-                    <i class="fa-solid fa-crosshairs group-hover:bg-blue-500"></i>
+                    <i class="fa-solid fa-crosshairs group-hover:text-primary"></i>
                 </button>
             </div>
 
@@ -59,19 +59,65 @@
 
     <!-- Layout Wrapper Container -->
     <div class="flex-grow flex flex-row relative h-full w-full overflow-hidden animate-fade-in">
-        
+
         <!-- MAP Container -->
         <div class="flex-grow relative h-full">
-            <div id="map" class="absolute inset-0 bg-slate-50 z-10"></div>
+            <div id="map" class="absolute inset-0 bg-slate-50"></div>
+
+
+            <!-- Custom Drawing Controls -->
+            <div id="drawing-controls"
+                class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-4 py-3 rounded-2xl shadow-xl z-[1000] flex items-center space-x-4 border border-gray-100 transition-all duration-300">
+
+                <button id="btn-add-line" onclick="startDrawingLine()"
+                    class="flex flex-col items-center justify-center space-y-1 w-16 group">
+                    <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors text-orange-600">
+                        <i class="fa-solid fa-route"></i>
+                    </div>
+                    <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Add Path</span>
+                </button>
+
+                <button id="btn-add-marker" onclick="startPlacingMarker()"
+                    class="flex flex-col items-center justify-center space-y-1 w-16 group">
+                    <div class="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center group-hover:bg-teal-500 group-hover:text-white transition-colors text-teal-600">
+                        <i class="fa-solid fa-door-open"></i>
+                    </div>
+                    <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Add Gate</span>
+                </button>
+
+                <div class="w-px h-8 bg-gray-200"></div>
+
+                <div id="zoom-controls-container" class="flex flex-col space-y-1">
+                    <button onclick="map.zoomIn()"
+                        class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </button>
+                    <button onclick="map.zoomOut()"
+                        class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
+                        <i class="fa-solid fa-minus text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="w-px h-8 bg-gray-200"></div>
+
+                <button onclick="saveInfra()" class="flex flex-col items-center justify-center space-y-1 w-16 group">
+                    <div class="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-600 ring-2 ring-green-600 ring-offset-2 hover:bg-green-100 transition-colors">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Save</span>
+                </button>
+            </div>
         </div>
 
         <!-- Sidebar Container -->
-        <div id="sidebar-container" class="w-72 bg-white border-l border-gray-200 shadow-sm flex-shrink-0 flex flex-col z-[1500] transition-all overflow-hidden">
+        <div id="sidebar-container"
+            class="w-72 bg-white border-l border-gray-200 shadow-sm flex-shrink-0 flex flex-col z-[1500] transition-all overflow-hidden">
             <div class="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                 <h2 id="sidebar-title" class="font-bold text-gray-900 flex items-center text-sm">
-                    <i class="fa-solid fa-list-ul text-purple-600 mr-2"></i> Platforms / Services
+                    <i class="fa-solid fa-sitemap text-orange-600 mr-2"></i> Infrastructure
                 </h2>
             </div>
+            
             <div id="sidebar-content" class="flex-grow overflow-y-auto p-4 space-y-3 bg-white">
                 <!-- Content will be injected -->
             </div>
@@ -81,9 +127,11 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+
     <!-- Modularized Scripts -->
     <script src="script/main.js"></script>
-    <script src="script/services.js"></script>
+    <script src="script/editor-engine.js"></script>
+    <script src="script/infrastructure.js"></script>
 </body>
+
 </html>

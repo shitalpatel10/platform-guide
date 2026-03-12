@@ -4,9 +4,7 @@ let currentStation;
 let currentStationId;
 let drawnItems;
 let polygonLayer = null;
-let vertexMarkers = [];
-let midpointMarkers = [];
-let selectedVertexIndex = -1;
+let editor = null;
 
 window.initManageStation = function(stationId) {
     const isNew = new URLSearchParams(window.location.search).get('new') === 'true';
@@ -22,6 +20,8 @@ window.initManageStation = function(stationId) {
         maxZoom: 19,
         attribution: 'Map data: &copy; OpenStreetMap | Map style: &copy; OpenRailwayMap'
     }).addTo(map);
+
+    editor = new GeometryEditor(map);
 
     if (isNew) {
         document.getElementById('location-selection-overlay').classList.remove('hidden');
@@ -64,8 +64,6 @@ window.initManageStation = function(stationId) {
         }
 
         map.setView([currentStation.lat, currentStation.lng], currentStation.zoom || 13);
-        document.getElementById('station-name-input').value = currentStation.name;
-        document.getElementById('station-code-input').value = currentStation.code;
         updateLocationDisplay(currentStation.lat, currentStation.lng);
 
         if (currentStation.geojson) {
@@ -78,6 +76,7 @@ window.initManageStation = function(stationId) {
         }
     }
     updatePolygonButtons();
+    renderSidebar();
 }
 
 function updateHeader(name, code) {
@@ -85,29 +84,19 @@ function updateHeader(name, code) {
     document.getElementById('header-station-code').innerText = code;
 }
 
-window.toggleStationDetailsCard = function() {
-    const card = document.getElementById('station-details-card'), backdrop = document.getElementById('station-details-card-backdrop');
-    if (card.classList.contains('hidden')) {
-        card.classList.remove('hidden'); backdrop.classList.remove('hidden');
-        setTimeout(() => { card.classList.remove('scale-95', 'opacity-0'); card.classList.add('scale-100', 'opacity-100'); backdrop.classList.remove('opacity-0'); }, 10);
-    } else {
-        card.classList.add('scale-95', 'opacity-0');
-        setTimeout(() => { card.classList.add('hidden'); backdrop.classList.add('hidden'); }, 300);
-    }
-}
 
 window.saveStationChangesAndClose = function() {
-    const name = document.getElementById('station-name-input').value, code = document.getElementById('station-code-input').value;
+    const name = document.getElementById('station-name-input-sidebar').value, code = document.getElementById('station-code-input-sidebar').value;
     if (!name || !code) { alert("Name and Code are required."); return; }
     if (currentStation) {
-        if (saveStationChanges()) { updateHeader(name, code); window.toggleStationDetailsCard(); }
+        if (saveStationChanges()) { updateHeader(name, code); }
     } else {
         finalizeStationCreation();
     }
 }
 
 function finalizeStationCreation() {
-    const name = document.getElementById('station-name-input').value, code = document.getElementById('station-code-input').value;
+    const name = document.getElementById('station-name-input-sidebar').value, code = document.getElementById('station-code-input-sidebar').value;
     const lat = document.getElementById('new-station-lat').value, lng = document.getElementById('new-station-lng').value, zoom = document.getElementById('new-station-zoom').value;
     if (!name || !code) { alert('Please enter name and code'); return; }
     const hasPolygon = (polygonLayer !== null) || (drawnItems && drawnItems.getLayers().length > 0);
@@ -127,10 +116,16 @@ function enableStationEditing() {
         const layer = drawnItems.getLayers()[0];
         let latlngs = layer.getLatLngs ? layer.getLatLngs() : null;
         if (latlngs && Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0])) latlngs = latlngs[0];
+        
         drawnItems.clearLayers();
-        if (polygonLayer) map.removeLayer(polygonLayer);
-        polygonLayer = L.polygon(latlngs, { color: '#2563EB', weight: 3, fillOpacity: 0.2 }).addTo(map);
-        renderVertices();
+        editor.initWithData(latlngs, {
+            type: 'polygon',
+            color: '#2563EB',
+            onUpdate: (lls) => {
+                // Update center or other aspects if needed
+            }
+        });
+        polygonLayer = editor.layer;
     } else {
         startDrawing();
     }
@@ -139,19 +134,33 @@ function enableStationEditing() {
 function updateLocationDisplay(lat, lng) {
     document.getElementById('lat-display').innerText = parseFloat(lat).toFixed(6);
     document.getElementById('lng-display').innerText = parseFloat(lng).toFixed(6);
+    
+    // Update hidden inputs as well for save logic
+    document.getElementById('new-station-lat').value = lat;
+    document.getElementById('new-station-lng').value = lng;
 }
 
 function saveStationChanges() {
     if (!currentStation) return false;
-    currentStation.name = document.getElementById('station-name-input').value;
-    currentStation.code = document.getElementById('station-code-input').value;
-    const hasPolygon = (polygonLayer !== null) || (drawnItems && drawnItems.getLayers().length > 0);
-    if (!hasPolygon) { window.showToast("Add a Polygon First", true); return false; }
-    currentStation.zoom = map.getZoom();
-    if (polygonLayer) currentStation.geojson = polygonLayer.toGeoJSON();
+    currentStation.name = document.getElementById('station-name-input-sidebar').value;
+    currentStation.code = document.getElementById('station-code-input-sidebar').value;
+    
+    const lat = document.getElementById('new-station-lat').value;
+    const lng = document.getElementById('new-station-lng').value;
+    
+    if (lat && lng) {
+        currentStation.lat = parseFloat(lat);
+        currentStation.lng = parseFloat(lng);
+    }
+
+    if (polygonLayer || (editor && editor.layer)) {
+         const layer = polygonLayer || editor.layer;
+         currentStation.geojson = layer.toGeoJSON();
+    }
     else if (drawnItems && drawnItems.getLayers().length > 0) currentStation.geojson = drawnItems.getLayers()[0].toGeoJSON();
     Storage.updateStation(currentStation);
     window.showToast("Station updated successfully!");
+    renderSidebar();
     return true;
 }
 
@@ -161,14 +170,18 @@ window.updatePolygonButtons = function() {
     if (actionBtn) {
         actionBtn.classList.remove('hidden');
         const iconContainer = actionBtn.querySelector('div'), icon = actionBtn.querySelector('i'), label = actionBtn.querySelector('span');
+        const zoomContainer = document.getElementById('zoom-controls-container');
+        
         if (hasPolygon) {
             label.innerText = "Reset"; icon.className = "fa-solid fa-rotate-left";
             iconContainer.className = "w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors text-gray-700";
             actionBtn.onclick = window.clearPolygon;
+            if (zoomContainer) zoomContainer.classList.remove('hidden');
         } else {
             label.innerText = "Add Poly"; icon.className = "fa-solid fa-draw-polygon";
             iconContainer.className = "w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors text-primary";
             actionBtn.onclick = window.addPolygon;
+            if (zoomContainer) zoomContainer.classList.add('hidden');
         }
     }
 }
@@ -176,9 +189,10 @@ window.updatePolygonButtons = function() {
 window.addPolygon = function() { startDrawing(true); }
 window.clearPolygon = function() {
     if (confirm("Clear polygon?")) {
-        if (polygonLayer) { map.removeLayer(polygonLayer); polygonLayer = null; }
+        if (editor) editor.reset();
         if (drawnItems) drawnItems.clearLayers();
-        clearMarkers(); window.deselectVertex(); window.updatePolygonButtons();
+        polygonLayer = null;
+        window.updatePolygonButtons();
     }
 }
 
@@ -217,78 +231,97 @@ function setupWizardMap(lat, lng) {
 }
 
 function startDrawing(force) {
-    if (!force && polygonLayer) return;
-    const center = map.getCenter();
-    const r = 0.002, latlngs = [[center.lat+r, center.lng], [center.lat-r/2, center.lng-r], [center.lat-r/2, center.lng+r]];
-    if (polygonLayer) map.removeLayer(polygonLayer);
-    polygonLayer = L.polygon(latlngs, { color: '#2563EB', weight: 3, fillOpacity: 0.2 }).addTo(map);
-    renderVertices(); window.updatePolygonButtons();
-}
-
-function clearMarkers() { vertexMarkers.forEach(m => map.removeLayer(m)); midpointMarkers.forEach(m => map.removeLayer(m)); vertexMarkers = []; midpointMarkers = []; }
-
-function renderVertices() {
-    clearMarkers(); if (!polygonLayer) return;
-    const latlngs = polygonLayer.getLatLngs()[0];
-    latlngs.forEach((latlng, index) => {
-        const m = L.marker(latlng, { draggable: true, icon: L.divIcon({ className: 'vertex-marker', html: `<div class="w-4 h-4 bg-white border-2 border-blue-600 rounded-full shadow-sm hover:scale-125 transition-transform cursor-pointer"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(map);
-        m.on('drag', (e) => { latlngs[index] = e.target.getLatLng(); polygonLayer.setLatLngs([latlngs]); updateMidpoints(); });
-        m.on('dragend', () => renderVertices());
-        m.on('dblclick', (e) => { L.DomEvent.stopPropagation(e); window.selectVertex(index); });
-        vertexMarkers.push(m);
+    if (!force && (polygonLayer || (editor && editor.layer))) return;
+    
+    editor.init({
+        type: 'polygon',
+        color: '#2563EB'
     });
-    latlngs.forEach((latlng, index) => {
-        const next = latlngs[(index + 1) % latlngs.length], mid = [(latlng.lat+next.lat)/2, (latlng.lng+next.lng)/2];
-        const mm = L.marker(mid, { icon: L.divIcon({ className: 'midpoint-marker', html: `<div class="w-5 h-5 bg-white text-blue-600 rounded-full shadow border border-blue-100 flex items-center justify-center hover:bg-blue-50 cursor-pointer transition-all transform hover:scale-110"><i class="fa-solid fa-plus text-[10px]"></i></div>`, iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map);
-        mm.on('click', (e) => { L.DomEvent.stopPropagation(e); addVertex(index); });
-        midpointMarkers.push(mm);
-    });
-}
-
-function updateMidpoints() {
-    if (!polygonLayer) return;
-    const latlngs = polygonLayer.getLatLngs()[0];
-    midpointMarkers.forEach((m, i) => { const p1 = latlngs[i], p2 = latlngs[(i+1)%latlngs.length]; m.setLatLng([(p1.lat+p2.lat)/2, (p1.lng+p2.lng)/2]); });
-}
-
-function addVertex(idx) {
-    const latlngs = polygonLayer.getLatLngs()[0], p1 = latlngs[idx], p2 = latlngs[(idx+1)%latlngs.length];
-    latlngs.splice(idx+1, 0, L.latLng((p1.lat+p2.lat)/2, (p1.lng+p2.lng)/2));
-    polygonLayer.setLatLngs([latlngs]); renderVertices();
-}
-
-window.selectVertex = function(idx) {
-    selectedVertexIndex = idx;
-    vertexMarkers.forEach((m, i) => {
-        const el = m.getElement().querySelector('div');
-        if (i === idx) { el.classList.remove('bg-white', 'border-blue-600'); el.classList.add('bg-red-500', 'border-red-600'); }
-        else { el.classList.add('bg-white', 'border-blue-600'); el.classList.remove('bg-red-500', 'border-red-600'); }
-    });
-    const btn = document.getElementById('btn-delete-vertex'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed');
-}
-
-window.deselectVertex = function() {
-    selectedVertexIndex = -1;
-    vertexMarkers.forEach(m => { const el = m.getElement()?.querySelector('div'); if (el) { el.classList.add('bg-white', 'border-blue-600'); el.classList.remove('bg-red-500', 'border-red-600'); } });
-    const btn = document.getElementById('btn-delete-vertex'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed');
+    polygonLayer = editor.layer;
+    window.updatePolygonButtons();
 }
 
 window.deleteSelectedVertex = function() {
-    if (selectedVertexIndex === -1 || !polygonLayer) return;
-    const latlngs = polygonLayer.getLatLngs()[0];
-    if (latlngs.length <= 3) { alert("Polygon must have at least 3 vertices."); return; }
-    latlngs.splice(selectedVertexIndex, 1); polygonLayer.setLatLngs([latlngs]);
-    window.deselectVertex(); renderVertices();
+    // This is now handled by double-clicking a vertex in the engine
+    window.showToast("Double-click a vertex to delete it");
 }
 
+function renderSidebar() {
+    const title = document.getElementById('sidebar-title');
+    const content = document.getElementById('sidebar-content');
+    
+    if (!title || !content) return;
+
+    if (currentStation || polygonLayer || (editor && editor.layer)) {
+        const name = currentStation ? currentStation.name : (document.getElementById('station-name-input-sidebar')?.value || '');
+        const code = currentStation ? currentStation.code : (document.getElementById('header-station-code')?.innerText === '---' ? '' : document.getElementById('header-station-code')?.innerText);
+
+        title.innerHTML = `<i class="fa-solid fa-city text-primary mr-2"></i> Station Workspace`;
+        content.innerHTML = `
+            <div class="space-y-6 animate-slide-in">
+                <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Configuration</p>
+                    <h3 class="font-bold text-blue-900">${currentStation ? 'Edit Station' : 'Create New Station'}</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Station Name</label>
+                        <input type="text" id="station-name-input-sidebar" value="${name}" placeholder="e.g., Howrah Junction"
+                            class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium transition-all shadow-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Station Code</label>
+                        <input type="text" id="station-code-input-sidebar" value="${code}" placeholder="e.g., HWH"
+                            class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-mono font-medium transition-all shadow-sm uppercase">
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                    <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Coordinates</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-white p-2 rounded-lg border border-gray-100">
+                            <p class="text-[9px] text-gray-400 uppercase font-bold">Lat</p>
+                            <p id="lat-display-sidebar" class="text-xs font-mono font-bold text-gray-700">${document.getElementById('lat-display')?.innerText || '-'}</p>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-gray-100">
+                            <p class="text-[9px] text-gray-400 uppercase font-bold">Lng</p>
+                            <p id="lng-display-sidebar" class="text-xs font-mono font-bold text-gray-700">${document.getElementById('lng-display')?.innerText || '-'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 space-y-3">
+                    <button onclick="saveStationChangesAndClose()" class="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 hover:bg-secondary transition-all flex items-center justify-center">
+                        <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Save & Sync Station
+                    </button>
+                    
+                    ${currentStation ? `
+                    <div class="flex space-x-2">
+                        <button onclick="deleteStation()" class="w-full py-2 bg-white text-red-500 border border-red-50 rounded-lg text-xs font-bold hover:bg-red-50 transition-colors">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Delete Station
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Intercept updateLocationDisplay to update sidebar too
+const originalUpdateLocationDisplay = window.updateLocationDisplay;
+window.updateLocationDisplay = function(lat, lng) {
+    if(originalUpdateLocationDisplay) originalUpdateLocationDisplay(lat, lng);
+    const latSd = document.getElementById('lat-display-sidebar');
+    const lngSd = document.getElementById('lng-display-sidebar');
+    if (latSd) latSd.innerText = parseFloat(lat).toFixed(6);
+    if (lngSd) lngSd.innerText = parseFloat(lng).toFixed(6);
+};
+
 window.openStationDetailsModal = function() {
-    if (!polygonLayer && (!drawnItems || drawnItems.getLayers().length === 0)) { alert("Draw the station area first."); return; }
-    const layer = polygonLayer || drawnItems.getLayers()[0], center = layer.getBounds().getCenter();
-    document.getElementById('new-station-lat').value = center.lat;
-    document.getElementById('new-station-lng').value = center.lng;
-    document.getElementById('new-station-zoom').value = map.getZoom();
-    window.toggleStationDetailsCard();
-    setTimeout(() => document.getElementById('station-name-input').focus(), 100);
+    saveStationChangesAndClose();
 }
 
 window.searchLocation = function() {

@@ -29,14 +29,14 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <i class="fa-solid fa-train text-primary text-2xl mr-3"></i>
-                    <span class="font-bold text-xl tracking-tight text-gray-900">Platform Guide</span>
+                    <i class="fa-solid fa-train text-primary text-2xl mr-3 shadow-sm"></i>
+                    <span class="font-black text-xl tracking-tight text-gray-900 uppercase">Platform Guide</span>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <button onclick="clearAllData()"
-                        class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
-                        <i class="fa-solid fa-trash-can mr-1"></i> Reset Data
-                    </button>
+                <div class="flex items-center">
+                    <a href="station.html?new=true" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-secondary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg shadow-primary/20 group">
+                        <i class="fa-solid fa-plus mr-2 group-hover:rotate-90 transition-transform"></i>
+                        Add New Station
+                    </a>
                 </div>
             </div>
         </div>
@@ -45,16 +45,8 @@
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        <!-- Header Section -->
-        <div class="mb-10 text-center sm:text-left sm:flex sm:items-end sm:justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Select a Station</h1>
-                <p class="text-gray-500">Manage maps, platforms, and facilities for your railway network.</p>
-            </div>
-        </div>
-
-        <!-- Station Grid -->
-        <div id="station-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Station Grid (List) -->
+        <div id="station-grid" class="grid grid-cols-1 gap-4">
             <!-- Station Cars will be injected here by JS -->
 
             <!-- Empty State (Hidden by default) -->
@@ -74,13 +66,6 @@
         </div>
 
     </main>
-
-    <!-- Floating Action Button (Mobile) -->
-    <a href="station.html?new=true"
-        class="fixed bottom-8 right-8 w-14 h-14 bg-primary hover:bg-secondary text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary z-40"
-        title="Add New Station">
-        <i class="fa-solid fa-plus text-xl"></i>
-    </a>
 
     <!-- Add Station Modal removed -->
 

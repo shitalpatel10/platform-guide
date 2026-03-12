@@ -7,6 +7,7 @@ let platformsData = []; // To keep track of all platforms for this station
 let selectedPlatformId = null; // The ID of the currently selected/editable platform
 let editedPlatformLayer = null; // The leaflet layer of the currently editing polygon
 let platformsFeatureGroup = null; // Group holding all static platforms
+let platformSearchQuery = ''; // Search filter for platforms
 
 // --- Page Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -154,16 +155,23 @@ function renderSidebar() {
         `;
     } else {
         sidebarTitle.innerHTML = `<i class="fa-solid fa-list-ul text-purple-600 mr-2"></i> All Platforms`;
-        if (platformsData.length === 0) {
-            sidebarContent.innerHTML = `<div class="text-center py-10 px-4"><div class="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-vector-square text-xl"></i></div><p class="text-sm text-gray-500 font-medium">No platforms yet</p></div>`;
+        const filtered = platformsData.filter(p => p.name.toLowerCase().includes(platformSearchQuery.toLowerCase()));
+        
+        if (filtered.length === 0) {
+            sidebarContent.innerHTML = `<div class="text-center py-10 px-4"><div class="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-vector-square text-xl"></i></div><p class="text-sm text-gray-500 font-medium">${platformSearchQuery ? 'No platforms match' : 'No platforms yet'}</p></div>`;
         } else {
             let html = '';
-            platformsData.forEach(p => {
+            filtered.forEach(p => {
                 html += `<div onclick="selectPlatform('${p.id}')" class="group bg-white border border-gray-200 hover:border-purple-300 rounded-xl p-3 cursor-pointer transition-all shadow-sm hover:shadow-md flex items-center justify-between"><div class="flex items-center space-x-3 overflow-hidden"><div class="w-8 h-8 rounded bg-purple-50 flex items-center justify-center text-purple-600 group-hover:scale-110 group-hover:bg-purple-100 transition-all flex-shrink-0"><i class="fa-solid fa-train"></i></div><div class="truncate"><p class="font-bold text-sm text-gray-800 group-hover:text-purple-700 transition-colors truncate">${p.name}</p></div></div><i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-purple-400 text-xs transition-colors"></i></div>`;
             });
             sidebarContent.innerHTML = html;
         }
     }
+}
+
+function handlePlatformSearch(query) {
+    platformSearchQuery = query;
+    renderSidebar();
 }
 
 // --- Platform Logic ---

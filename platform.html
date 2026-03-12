@@ -26,38 +26,39 @@
 
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
 
-    <!-- Navbar HEADER -->
     <nav class="bg-white shadow-sm border-b border-gray-100 z-50 h-16 flex-shrink-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
-            <div class="flex items-center">
-                <a href="index.html" class="flex items-center text-gray-500 hover:text-gray-900 transition-colors mr-4">
-                    <i class="fa-solid fa-arrow-left text-lg"></i>
-                </a>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full grid grid-cols-3 items-center">
+            
+            <!-- Left Column: Navigation Hub -->
+            <div id="nav-left" class="flex items-center justify-start">
+                <!-- Navigation Hub will be injected here by main.js -->
+            </div>
 
-                <div class="flex flex-col items-start cursor-default text-left ml-2">
-                    <h1 id="header-station-name" class="font-bold text-lg leading-none text-gray-900 flex items-center">
+            <!-- Center Column: Station Identity -->
+            <div class="flex flex-col items-center justify-center text-center">
+                <div class="flex items-center space-x-2 h-7">
+                    <i class="fa-solid fa-train-subway text-primary text-[10px] opacity-40"></i>
+                    <h1 id="header-station-name" class="font-extrabold text-base tracking-tight text-gray-900 uppercase">
                         Loading Station...
                     </h1>
-                    <span id="header-station-code"
-                        class="text-[10px] font-mono text-gray-500 mt-0.5 bg-gray-100 px-1.5 rounded">---</span>
+                </div>
+                <div id="header-station-code" class="text-[9px] font-black font-mono text-gray-400 mt-0.5 tracking-[0.2em] bg-gray-50 px-2 py-0.5 rounded border border-gray-100 uppercase leading-none">
+                    ---
                 </div>
             </div>
 
-            <div class="flex items-center space-x-3">
-                <button onclick="recenterMap()"
-                    class="inline-flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-sm font-medium rounded-lg transition-colors shadow-sm">
-                    <i class="fa-solid fa-crosshairs mr-2 text-gray-400"></i> Recenter
+            <!-- Right Column: Contextual Actions -->
+            <div id="nav-right" class="flex items-center justify-end space-x-3">
+                <button onclick="recenterMap()" class="p-2.5 bg-white hover:bg-gray-50 text-gray-500 border border-gray-200 rounded-xl transition-all shadow-sm group" title="Recenter View">
+                    <i class="fa-solid fa-crosshairs group-hover:text-primary"></i>
                 </button>
-                <a href="#" id="manage-services-link"
-                    class="inline-flex items-center px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-sm font-medium rounded-lg transition-colors shadow-sm">
-                    <i class="fa-solid fa-location-dot mr-2 text-indigo-500"></i> Manage Services
-                </a>
             </div>
+
         </div>
     </nav>
 
     <!-- Layout Wrapper Container -->
-    <div class="flex-grow flex flex-row relative h-full w-full overflow-hidden">
+    <div class="flex-grow flex flex-row relative h-full w-full overflow-hidden animate-fade-in">
 
         <!-- MAP Container -->
         <div class="flex-grow relative h-full">
@@ -155,6 +156,16 @@
                     <i class="fa-solid fa-list-ul text-purple-600 mr-2"></i> All Platforms
                 </h2>
             </div>
+            
+            <div id="sidebar-search-container" class="px-4 py-3 border-b border-gray-100 bg-white">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input type="text" id="platform-search-input" placeholder="Find platform..."
+                        class="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 outline-none text-xs transition-all"
+                        onkeyup="handlePlatformSearch(this.value)">
+                </div>
+            </div>
+
             <div id="sidebar-content" class="flex-grow overflow-y-auto p-4 space-y-3 bg-white">
                 <!-- Content will be injected -->
             </div>

@@ -1,12 +1,9 @@
-// --- Global State ---
 let currentStationId = null;
 let platformsData = [];
-let selectedPlatformId = null;
-let editedPlatformLayer = null;
 let platformsFeatureGroup = null;
 
 let pServiceMarkers = [];
-let currentServicesData = [];
+let currentServicesData = []; // Now station-wide services
 let currentPlacementServiceType = null;
 
 let osmServicesGroup = null;
@@ -79,15 +76,61 @@ document.addEventListener('DOMContentLoaded', () => {
         map.fitBounds(platformsFeatureGroup.getBounds());
     }
 
+    // Load station-wide services
+    currentServicesData = Storage.getServicesByStationId(currentStationId);
+    
+    // Migration: If no global services but platforms have them, migrate
+    if (currentServicesData.length === 0 && platformsData.some(p => p.services && p.services.length > 0)) {
+        console.log("Migrating platform services to global station services...");
+        platformsData.forEach(p => {
+            if (p.services) {
+                p.services.forEach(srv => {
+                    currentServicesData.push({
+                        ...srv,
+                        stationId: currentStationId,
+                        platformId: p.id,
+                        id: 'srv_' + Date.now() + Math.random().toString(36).substr(2, 9)
+                    });
+                });
+                delete p.services;
+            }
+        });
+        Storage.savePlatforms(Storage.getPlatforms().map(p => {
+            const match = platformsData.find(pd => pd.id === p.id);
+            return match || p;
+        }));
+        Storage.saveServices([...Storage.getServices(), ...currentServicesData]);
+    }
+
+    renderServiceMarkers();
     renderSidebar();
     setTimeout(fetchOSMServices, 600);
 
     map.on('click', (e) => {
         if (currentPlacementServiceType) {
-            currentServicesData.push({ type: currentPlacementServiceType, lat: e.latlng.lat, lng: e.latlng.lng });
+            // Auto-detect platform
+            let detectedPlatformId = null;
+            for (const p of platformsData) {
+                if (p.geojson && GeoFilter.isPointInPolygon(e.latlng, p.geojson.geometry.coordinates[0])) {
+                    detectedPlatformId = p.id;
+                    break;
+                }
+            }
+
+            const newService = {
+                id: 'srv_' + Date.now(),
+                stationId: currentStationId,
+                platformId: detectedPlatformId,
+                type: currentPlacementServiceType,
+                lat: e.latlng.lat,
+                lng: e.latlng.lng
+            };
+
+            currentServicesData.push(newService);
             currentPlacementServiceType = null;
             renderServiceMarkers();
             renderSidebar();
+            showToast(detectedPlatformId ? `Service placed on Platform` : `Service placed on Ground`);
         }
     });
 });
@@ -97,30 +140,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderAllStaticPlatforms() {
     platformsFeatureGroup.clearLayers();
     platformsData.forEach(p => {
-        if (p.id === selectedPlatformId) return;
         if (p.geojson) {
             const layer = L.geoJSON(p.geojson, {
-                style: { color: '#6B7280', weight: 2, fillOpacity: 0.4 }
-            }).bindTooltip(p.name, { permanent: true, direction: 'center', className: 'font-bold text-gray-700 bg-white/80 border-none shadow-sm rounded px-1 py-0.5 text-xs' });
-            layer.on('click', (e) => { L.DomEvent.stopPropagation(e); selectPlatform(p.id); });
-            layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.6, color: '#8B5CF6' }); this.bringToFront(); });
-            layer.on('mouseout', function () { this.setStyle({ fillOpacity: 0.4, color: '#6B7280' }); });
-            platformsFeatureGroup.addLayer(layer);
-        }
-        if (p.services) {
-            p.services.forEach(srv => {
-                const sType = PLATFORM_SERVICES[srv.type];
-                if (sType) {
-                    L.marker([srv.lat, srv.lng], {
-                        interactive: false,
-                        icon: L.divIcon({
-                            className: 'static-service-marker',
-                            html: `<div class="w-5 h-5 ${sType.bg} ${sType.color} rounded-full border border-white shadow-sm flex items-center justify-center text-[10px] opacity-80"><i class="fa-solid ${sType.icon}"></i></div>`,
-                            iconSize: [20, 20], iconAnchor: [10, 10]
-                        })
-                    }).addTo(platformsFeatureGroup);
-                }
+                style: { color: '#6B7280', weight: 2, fillOpacity: 0.15 }
+            }).bindTooltip(p.name, { 
+                permanent: true, 
+                direction: 'center', 
+                className: 'font-bold text-gray-400 bg-transparent border-none shadow-none pointer-events-none text-[10px] uppercase tracking-wider' 
             });
+            platformsFeatureGroup.addLayer(layer);
         }
     });
 }
@@ -129,60 +157,86 @@ function renderSidebar() {
     const sidebarTitle = document.getElementById('sidebar-title');
     const sidebarContent = document.getElementById('sidebar-content');
 
-    if (selectedPlatformId || editedPlatformLayer) {
-        sidebarTitle.innerHTML = `<i class="fa-solid fa-layer-group text-purple-600 mr-2"></i> Services`;
-        const platform = platformsData.find(p => p.id === selectedPlatformId);
-        const name = platform ? platform.name : "Platform Services";
+    sidebarTitle.innerHTML = `<i class="fa-solid fa-location-dot text-indigo-600 mr-2"></i> Station Services`;
 
-        let currentServicesHTML = currentServicesData.length === 0 ? '<p class="text-xs text-gray-500">No services added yet.</p>' : currentServicesData.map((srv, idx) => {
-            const sType = PLATFORM_SERVICES[srv.type];
-            return `<div class="flex justify-between items-center bg-white p-2 border border-gray-200 rounded-lg shadow-sm"><div class="flex items-center space-x-2"><div class="w-6 h-6 ${sType.bg} ${sType.color} rounded-full flex justify-center items-center text-[10px]"><i class="fa-solid ${sType.icon}"></i></div><span class="text-xs font-semibold text-gray-700">${sType.name}</span></div><button onclick="deleteService(${idx})" class="text-red-400 hover:text-red-600 p-1 transition-colors"><i class="fa-solid fa-trash-can text-sm"></i></button></div>`;
-        }).join('');
-
-        sidebarContent.innerHTML = `<div class="bg-purple-50 rounded-xl p-4 border border-purple-100"><div class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Editing Platform</div><h3 class="text-lg font-bold text-purple-900 truncate">${name}</h3></div><div class="mt-4 space-y-3 bg-gray-50 p-3 rounded-xl border border-gray-100"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Add Services</p>${currentPlacementServiceType ? `<div class="bg-blue-50 border border-blue-200 text-blue-700 text-xs p-2 rounded flex items-center justify-between shadow-sm"><span>Click on map to place <b>${PLATFORM_SERVICES[currentPlacementServiceType].name}</b></span><button onclick="cancelPlacement()" class="text-blue-500 hover:text-blue-800"><i class="fa-solid fa-xmark"></i></button></div>` : `<div class="grid grid-cols-4 gap-2">${Object.keys(PLATFORM_SERVICES).map(key => `<button onclick="startPlacingService('${key}')" title="${PLATFORM_SERVICES[key].name}" class="h-10 border border-gray-200 bg-white rounded-lg flex items-center justify-center hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300 transition-colors shadow-sm text-gray-500"><i class="fa-solid ${PLATFORM_SERVICES[key].icon}"></i></button>`).join('')}</div>`}</div><div class="mt-4 space-y-3 bg-gray-50 p-3 rounded-xl border border-gray-100"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Current Services</p>${currentServicesHTML}</div><div class="mt-4 space-y-3 bg-gray-50 p-3 rounded-xl border border-gray-100"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Quick Actions</p><button onclick="recenterToPlatform()" class="w-full text-left px-3 py-2 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-gray-700 font-medium text-sm rounded-lg transition-colors border border-gray-200 shadow-sm"><i class="fa-solid fa-crosshairs mr-2 text-blue-500"></i> Recenter</button><button onclick="saveServices()" class="w-full text-left px-3 py-2 bg-white hover:bg-green-50 hover:text-green-700 hover:border-green-200 text-green-600 font-medium text-sm rounded-lg transition-colors border border-gray-200 shadow-sm"><i class="fa-solid fa-check mr-2 text-green-500"></i> Save Services</button><button onclick="clearPlatformEditingState()" class="w-full text-left px-3 py-2 bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200 font-medium text-sm rounded-lg transition-colors shadow-sm"><i class="fa-solid fa-arrow-left mr-2"></i> Back</button></div>`;
+    let servicesHTML = '';
+    if (currentServicesData.length === 0) {
+        servicesHTML = '<div class="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200"><p class="text-xs text-gray-400">No services added yet.</p></div>';
     } else {
-        sidebarTitle.innerHTML = `<i class="fa-solid fa-list-ul text-purple-600 mr-2"></i> All Platforms`;
-        if (platformsData.length === 0) {
-            sidebarContent.innerHTML = `<div class="text-center py-10 px-4"><div class="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-layer-group text-xl"></i></div><p class="text-sm text-gray-500 font-medium">No platforms found</p></div>`;
-        } else {
-            let html = '';
-            platformsData.forEach(p => {
-                html += `<div onclick="selectPlatform('${p.id}')" class="group bg-white border border-gray-200 hover:border-purple-300 rounded-xl p-3 cursor-pointer transition-all shadow-sm hover:shadow-md flex items-center justify-between"><div class="flex items-center space-x-3 overflow-hidden"><div class="w-8 h-8 rounded bg-purple-50 flex items-center justify-center text-purple-600 group-hover:scale-110 group-hover:bg-purple-100 transition-all flex-shrink-0"><i class="fa-solid fa-train"></i></div><div class="truncate"><p class="font-bold text-sm text-gray-800 group-hover:text-purple-700 transition-colors truncate">${p.name}</p></div></div><i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-purple-400 text-xs transition-colors"></i></div>`;
-            });
-            sidebarContent.innerHTML = html;
-        }
+        servicesHTML = `<div class="space-y-2">` + currentServicesData.map((srv, idx) => {
+            const sType = PLATFORM_SERVICES[srv.type];
+            const platform = platformsData.find(p => p.id === srv.platformId);
+            const locationName = platform ? platform.name : "On Ground";
+            
+            return `
+                <div class="flex flex-col bg-white p-3 border border-gray-100 rounded-xl shadow-sm hover:border-indigo-200 transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 ${sType.bg} ${sType.color} rounded-lg flex justify-center items-center text-xs shadow-inner">
+                                <i class="fa-solid ${sType.icon}"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-800">${sType.name}</p>
+                                <p class="text-[10px] text-gray-400 font-medium flex items-center">
+                                    <i class="fa-solid ${platform ? 'fa-layer-group text-orange-400' : 'fa-earth-asia text-green-400'} mr-1"></i> ${locationName}
+                                </p>
+                            </div>
+                        </div>
+                        <button onclick="deleteService(${idx})" class="text-gray-300 hover:text-red-500 p-1.5 transition-colors">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                </div>`;
+        }).join('') + `</div>`;
     }
+
+    sidebarContent.innerHTML = `
+        <div class="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100/50 mb-6">
+            <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Service Placement</p>
+            <h3 class="text-sm font-bold text-indigo-900 mb-3 leading-tight">Add facilities to your station map</h3>
+            
+            ${currentPlacementServiceType ? `
+                <div class="bg-indigo-600 text-white p-3 rounded-xl shadow-lg shadow-indigo-200 flex items-center justify-between animate-pulse">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        <span class="text-xs font-bold">CLICK ON MAP TO PLACE</span>
+                    </div>
+                    <button onclick="cancelPlacement()" class="bg-white/20 hover:bg-white/30 p-1 rounded-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            ` : `
+                <div class="grid grid-cols-4 gap-2">
+                    ${Object.keys(PLATFORM_SERVICES).map(key => `
+                        <button onclick="startPlacingService('${key}')" 
+                            class="h-11 bg-white border border-gray-100 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm active:scale-95 group">
+                            <i class="fa-solid ${PLATFORM_SERVICES[key].icon} text-gray-400 group-hover:text-indigo-500"></i>
+                        </button>
+                    `).join('')}
+                </div>
+            `}
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex items-center justify-between px-1">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Services</p>
+                <span class="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">${currentServicesData.length}</span>
+            </div>
+            ${servicesHTML}
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-gray-100 flex flex-col space-y-3">
+            <button onclick="saveAllServices()" class="w-full py-3 bg-gray-900 text-white font-bold text-xs rounded-xl shadow-lg shadow-gray-200 hover:bg-black transition-all flex items-center justify-center group">
+                <i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-400 group-hover:scale-110 transition-transform"></i> SAVE ALL CHANGES
+            </button>
+            <button onclick="recenterMap()" class="w-full py-3 bg-white border border-gray-200 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center">
+                <i class="fa-solid fa-crosshairs mr-2"></i> RECENTER VIEW
+            </button>
+        </div>
+    `;
 }
 
 // --- Interaction Actions ---
-
-function selectPlatform(platformId) {
-    if (editedPlatformLayer) {
-        if(!confirm("Discard unsaved changes?")) return;
-        clearPlatformEditingState();
-    }
-    selectedPlatformId = platformId;
-    const platform = platformsData.find(p => p.id === platformId);
-    if (!platform) return;
-
-    renderAllStaticPlatforms();
-    const staticLayer = L.geoJSON(platform.geojson);
-    const latlngs = staticLayer.getLayers()[0].getLatLngs();
-    currentServicesData = platform.services ? JSON.parse(JSON.stringify(platform.services)) : [];
-
-    editedPlatformLayer = L.polygon(latlngs, { color: 'purple', weight: 3, fillOpacity: 0.1, interactive: false }).addTo(map);
-    renderServiceMarkers();
-    renderSidebar();
-    renderOSMServices();
-}
-
-function clearPlatformEditingState() {
-    if (editedPlatformLayer) { map.removeLayer(editedPlatformLayer); editedPlatformLayer = null; }
-    pServiceMarkers.forEach(m => map.removeLayer(m));
-    pServiceMarkers = [];
-    currentServicesData = []; currentPlacementServiceType = null; selectedPlatformId = null;
-    renderAllStaticPlatforms(); renderSidebar(); renderOSMServices();
-}
 
 function startPlacingService(type) { currentPlacementServiceType = type; renderSidebar(); }
 function cancelPlacement() { currentPlacementServiceType = null; renderSidebar(); }
@@ -190,30 +244,60 @@ function cancelPlacement() { currentPlacementServiceType = null; renderSidebar()
 function renderServiceMarkers() {
     pServiceMarkers.forEach(m => map.removeLayer(m));
     pServiceMarkers = [];
-    if (!editedPlatformLayer) return;
+    
     currentServicesData.forEach((srv, index) => {
         const sType = PLATFORM_SERVICES[srv.type];
         if(!sType) return;
+        
+        const platform = platformsData.find(p => p.id === srv.platformId);
+        const locationTip = platform ? platform.name : "Ground";
+
         const marker = L.marker([srv.lat, srv.lng], {
             draggable: true,
             icon: L.divIcon({
                 className: 'service-marker',
-                html: `<div class="w-7 h-7 ${sType.bg} ${sType.color} rounded-full border-2 border-white shadow-md flex items-center justify-center text-[12px] group relative"><i class="fa-solid ${sType.icon}"></i><div class="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full flex flex-col items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 cursor-pointer shadow"><i class="fa-solid fa-xmark"></i></div></div>`,
+                html: `<div class="w-7 h-7 ${sType.bg} ${sType.color} rounded-full border-2 border-white shadow-md flex items-center justify-center text-[12px] group relative focus:ring-4 focus:ring-indigo-100 transition-all"><i class="fa-solid ${sType.icon}"></i></div>`,
                 iconSize: [28, 28], iconAnchor: [14, 14]
             })
-        }).addTo(map);
+        }).addTo(map).bindTooltip(`${sType.name} (${locationTip})`, { direction: 'top', offset: [0, -10] });
 
-        marker.on('dragend', (e) => { const pos = e.target.getLatLng(); srv.lat = pos.lat; srv.lng = pos.lng; });
-        marker.on('dblclick', (e) => { L.DomEvent.stopPropagation(e); currentServicesData.splice(index, 1); renderServiceMarkers(); renderSidebar(); });
+        marker.on('dragend', (e) => { 
+            const pos = e.target.getLatLng(); 
+            srv.lat = pos.lat; 
+            srv.lng = pos.lng; 
+            
+            // Re-detect platform on drag end
+            let detectedPlatformId = null;
+            for (const p of platformsData) {
+                if (p.geojson && GeoFilter.isPointInPolygon(pos, p.geojson.geometry.coordinates[0])) {
+                    detectedPlatformId = p.id;
+                    break;
+                }
+            }
+            srv.platformId = detectedPlatformId;
+            renderSidebar();
+            marker.setTooltipContent(`${sType.name} (${detectedPlatformId ? platformsData.find(p => p.id === detectedPlatformId).name : "Ground"})`);
+        });
+        
+        marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+        });
+
         pServiceMarkers.push(marker);
     });
 }
 
-function deleteService(index) { currentServicesData.splice(index, 1); renderServiceMarkers(); renderSidebar(); }
-function saveServices() {
-    if (!selectedPlatformId) return;
-    const idx = platformsData.findIndex(p => p.id === selectedPlatformId);
-    if(idx !== -1) { platformsData[idx].services = currentServicesData; Storage.savePlatforms(platformsData); showToast("Services saved!"); clearPlatformEditingState(); }
+function deleteService(index) { 
+    currentServicesData.splice(index, 1); 
+    renderServiceMarkers(); 
+    renderSidebar(); 
+}
+
+function saveAllServices() {
+    const allServices = Storage.getServices().filter(s => s.stationId !== currentStationId);
+    const updatedServices = [...allServices, ...currentServicesData];
+    Storage.saveServices(updatedServices);
+    showToast("All services saved successfully!");
 }
 
 // --- OSM Logic ---
@@ -237,8 +321,12 @@ function renderOSMServices() {
     fetchedOSMElements.forEach(el => {
         const pt = [el.lat, el.lon];
         let inside = false;
-        if (editedPlatformLayer) inside = isPointInPolygon(pt, editedPlatformLayer.getLatLngs()[0]);
-        else { for (let p of platformsData) { if (p.geojson && isPointInPolygon(pt, p.geojson.geometry.coordinates[0].map(c => ({lat:c[1], lng:c[0]})))) { inside = true; break; } } }
+        for (let p of platformsData) { 
+            if (p.geojson && GeoFilter.isPointInPolygon(pt, p.geojson.geometry.coordinates[0])) { 
+                inside = true; 
+                break; 
+            } 
+        }
         if (inside) {
             let icon = 'ℹ️', name = 'Service';
             if (el.tags.amenity === 'toilets') icon = '🚻';
@@ -250,14 +338,6 @@ function renderOSMServices() {
     });
 }
 
-function isPointInPolygon(pt, vs) {
-    let x = pt[0], y = pt[1], inside = false;
-    for (let i = 0, j = vs.length-1; i < vs.length; j = i++) {
-        let xi = vs[i].lat, yi = vs[i].lng, xj = vs[j].lat, yj = vs[j].lng;
-        if (((yi > y) != (yj > y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside = !inside;
-    }
-    return inside;
-}
 
 // --- UI Helpers ---
 
@@ -277,6 +357,3 @@ function recenterMap() {
     else map.flyTo([s.lat, s.lng], s.zoom || 15, { duration: 1.5 });
 }
 
-function recenterToPlatform() {
-    if (editedPlatformLayer) map.fitBounds(editedPlatformLayer.getBounds(), { padding: [100, 100], duration: 1.5 });
-}
