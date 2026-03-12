@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User View - Platform Guide</title>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="script/tailwind-config.js"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar HEADER -->
+    <nav class="bg-white shadow-sm border-b border-gray-100 z-50 h-16 flex-shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
+            <div class="flex items-center">
+                <a href="index.html" class="flex items-center text-gray-500 hover:text-gray-900 transition-colors mr-4">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+
+                <div class="flex flex-col items-start cursor-default text-left ml-2">
+                    <h1 id="header-station-name" class="font-bold text-lg leading-none text-gray-900 flex items-center">
+                        Loading Station...
+                    </h1>
+                    <span id="header-station-code"
+                        class="text-[10px] font-mono text-gray-500 mt-0.5 bg-gray-100 px-1.5 rounded">---</span>
+                </div>
+            </div>
+
+            <div class="hidden sm:flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+                <i class="fa-solid fa-user-check text-blue-500 text-xs"></i>
+                <span class="text-xs font-semibold text-blue-700 uppercase tracking-wider">User View</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Layout Wrapper Container -->
+    <div class="flex-grow flex flex-row relative h-full w-full overflow-hidden">
+
+        <!-- Sidebar Container (LEFT) -->
+        <div id="sidebar-container"
+            class="w-80 bg-white border-r border-gray-200 shadow-xl flex-shrink-0 flex flex-col z-[1500] transition-all overflow-hidden">
+            
+            <div class="p-4 border-b border-gray-100 bg-white space-y-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" id="search-input" placeholder="Search platforms or services..."
+                        class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm transition-all shadow-sm"
+                        onkeyup="handleSearch(this.value)">
+                </div>
+                
+                <div id="filter-chips" class="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
+                    <button onclick="setFilter('all', event)" class="filter-chip active flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all bg-primary text-white shadow-md shadow-primary/20">All</button>
+                    <button onclick="setFilter('platforms', event)" class="filter-chip flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all bg-gray-100 text-gray-500 hover:bg-gray-200">Platforms</button>
+                    <button onclick="setFilter('services', event)" class="filter-chip flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all bg-gray-100 text-gray-500 hover:bg-gray-200">Services</button>
+                </div>
+            </div>
+
+            <div id="sidebar-content" class="flex-grow overflow-y-auto p-4 space-y-4">
+                <div class="animate-pulse space-y-4">
+                    <div class="h-20 bg-gray-100 rounded-xl"></div>
+                    <div class="h-20 bg-gray-100 rounded-xl"></div>
+                    <div class="h-20 bg-gray-100 rounded-xl"></div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 mt-auto">
+                <div class="flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                    <span>Platform Guide v1.0</span>
+                    <span id="items-count">0 Items</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAP Container -->
+        <div class="flex-grow relative h-full">
+            <div id="map" class="absolute inset-0 bg-slate-50"></div>
+            
+            <div class="absolute top-4 right-4 z-[1000] flex flex-col space-y-2">
+                <button onclick="map.zoomIn()" class="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-primary transition-colors"><i class="fa-solid fa-plus"></i></button>
+                <button onclick="map.zoomOut()" class="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-primary transition-colors"><i class="fa-solid fa-minus"></i></button>
+                <button onclick="fitAll()" class="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center text-gray-600 hover:text-primary transition-colors" title="Fit All"><i class="fa-solid fa-expand"></i></button>
+            </div>
+
+            <div class="absolute bottom-6 right-6 z-[1000] glass-panel px-4 py-3 rounded-2xl shadow-xl border border-white/50 hidden md:block">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Map Legend</p>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-primary/40 border border-primary"></div>
+                        <span class="text-xs text-gray-600 font-medium">Platforms</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-blue-400 border border-blue-600"></div>
+                        <span class="text-xs text-gray-600 font-medium">Boundary</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Modularized Scripts -->
+    <script src="script/main.js"></script>
+    <script src="script/result.js"></script>
+</body>
+</html>

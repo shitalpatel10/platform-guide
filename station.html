@@ -11,21 +11,7 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: '#2563EB',
-                        secondary: '#1E40AF',
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="script/tailwind-config.js"></script>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -37,22 +23,6 @@
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        .search-panel {
-            position: absolute;
-            top: 80px;
-            right: 20px;
-            width: 300px;
-            z-index: 1000;
-        }
-
-        /* Modal for Station Details */
-        #station-details-card {
-            z-index: 3000;
-            /* Higher than map controls */
-        }
-    </style>
 </head>
 
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
@@ -87,6 +57,10 @@
                 </div>
 
                 <div class="flex space-x-2">
+                    <button onclick="recenterMap()"
+                        class="inline-flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-sm font-medium rounded-lg transition-colors shadow-sm">
+                        <i class="fa-solid fa-crosshairs mr-2 text-gray-400"></i> Recenter
+                    </button>
                     <a href="platform.html" id="manage-platforms-link"
                         class="hidden inline-flex items-center px-4 py-2 bg-primary hover:bg-secondary text-white border border-transparent text-sm font-medium rounded-lg transition-colors shadow-sm shadow-blue-500/20">
                         <i class="fa-solid fa-layer-group mr-2"></i> Manage Platforms
@@ -97,7 +71,6 @@
                     </a>
                 </div>
             </div>
-        </div>
         </div>
     </nav>
 
@@ -123,15 +96,13 @@
 
             <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station
-                        Name</label>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station Name</label>
                     <input type="text" id="station-name-input"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm text-gray-900 font-medium shadow-sm">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station
-                        Code</label>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Station Code</label>
                     <input type="text" id="station-code-input"
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-sm font-mono text-gray-900 shadow-sm">
                 </div>
@@ -141,13 +112,11 @@
                     <div class="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-200">
                         <div class="flex justify-between items-center text-sm">
                             <span class="text-gray-600">Latitude</span>
-                            <span id="lat-display"
-                                class="font-mono text-gray-900 font-medium bg-white px-2 py-0.5 rounded border border-gray-100">-</span>
+                            <span id="lat-display" class="font-mono text-gray-900 font-medium bg-white px-2 py-0.5 rounded border border-gray-100">-</span>
                         </div>
                         <div class="flex justify-between items-center text-sm">
                             <span class="text-gray-600">Longitude</span>
-                            <span id="lng-display"
-                                class="font-mono text-gray-900 font-medium bg-white px-2 py-0.5 rounded border border-gray-100">-</span>
+                            <span id="lng-display" class="font-mono text-gray-900 font-medium bg-white px-2 py-0.5 rounded border border-gray-100">-</span>
                         </div>
                     </div>
                     <p class="text-xs text-gray-400 mt-3 text-center">
@@ -167,9 +136,6 @@
                 </div>
             </div>
         </div>
-
-
-
     </div>
 
     <!-- Location Selection Overlay -->
@@ -177,8 +143,7 @@
         class="fixed inset-0 bg-gray-50 z-[2000] hidden flex flex-col items-center justify-center p-4">
         <div class="max-w-md w-full text-center space-y-8">
             <div>
-                <div
-                    class="mx-auto w-16 h-16 bg-blue-100 text-primary rounded-full flex items-center justify-center mb-4">
+                <div class="mx-auto w-16 h-16 bg-blue-100 text-primary rounded-full flex items-center justify-center mb-4">
                     <i class="fa-solid fa-map-location-dot text-3xl"></i>
                 </div>
                 <h2 class="text-3xl font-bold text-gray-900">Where is the station?</h2>
@@ -221,35 +186,22 @@
         </div>
     </div>
 
-    <!-- Custom Drawing Controls (Bottom Center) -->
+    <!-- Custom Drawing Controls -->
     <div id="drawing-controls"
         class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-4 py-3 rounded-2xl shadow-xl z-[1000] flex items-center space-x-4 border border-gray-100 transition-all duration-300">
 
-
-
         <button id="btn-add-polygon" onclick="addPolygon()"
             class="hidden flex flex-col items-center justify-center space-y-1 w-16 group">
-            <div
-                class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors text-primary">
+            <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors text-primary">
                 <i class="fa-solid fa-draw-polygon"></i>
             </div>
             <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Add Poly</span>
         </button>
 
-        <button id="btn-clear-polygon" onclick="clearPolygon()"
-            class="hidden flex flex-col items-center justify-center space-y-1 w-16 group">
-            <div
-                class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors text-gray-700">
-                <i class="fa-solid fa-eraser"></i>
-            </div>
-            <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Clear</span>
-        </button>
-
         <button id="btn-delete-vertex" onclick="deleteSelectedVertex()" disabled
             class="flex flex-col items-center justify-center space-y-1 w-16 group transition-all duration-300 opacity-50 cursor-not-allowed"
             title="Double Click a Vertex to Delete">
-            <div
-                class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-500 ring-2 ring-red-500 ring-offset-2 group-disabled:ring-gray-300 group-disabled:bg-gray-100 group-disabled:text-gray-400 group-focus:ring-red-500 transition-colors">
+            <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-500 ring-2 ring-red-500 ring-offset-2 group-disabled:ring-gray-300 group-disabled:bg-gray-100 group-disabled:text-gray-400 transition-colors">
                 <i class="fa-solid fa-trash-can"></i>
             </div>
             <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Del Vertex</span>
@@ -259,13 +211,11 @@
 
         <div class="flex flex-col space-y-1">
             <button onclick="map.zoomIn()"
-                class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
-                title="Zoom In">
+                class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
                 <i class="fa-solid fa-plus text-xs"></i>
             </button>
             <button onclick="map.zoomOut()"
-                class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors"
-                title="Zoom Out">
+                class="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors">
                 <i class="fa-solid fa-minus text-xs"></i>
             </button>
         </div>
@@ -274,8 +224,7 @@
 
         <button onclick="openStationDetailsModal()"
             class="flex flex-col items-center justify-center space-y-1 w-16 group">
-            <div
-                class="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-600 ring-2 ring-green-600 ring-offset-2 hover:bg-green-100 transition-colors">
+            <div class="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-600 ring-2 ring-green-600 ring-offset-2 hover:bg-green-100 transition-colors">
                 <i class="fa-solid fa-check"></i>
             </div>
             <span class="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Save</span>
@@ -287,14 +236,14 @@
     <input type="hidden" id="new-station-lng">
     <input type="hidden" id="new-station-zoom">
 
-
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    
+    <!-- Modularized Scripts -->
     <script src="script/main.js"></script>
+    <script src="script/station.js"></script>
     <script>
-        // Page specific initialization
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const stationId = urlParams.get('id');
@@ -307,7 +256,17 @@
                 window.location.href = 'index.html';
             }
         });
+
+        function recenterMap() {
+            if (!map) return;
+            const station = Storage.getStationById(currentStationId);
+            if (station && station.geojson) {
+                const layer = L.geoJSON(station.geojson);
+                map.fitBounds(layer.getBounds(), { padding: [100, 100], duration: 1.5 });
+            } else if (station) {
+                map.flyTo([station.lat, station.lng], station.zoom || 15, { duration: 1.5 });
+            }
+        }
     </script>
 </body>
-
 </html>
