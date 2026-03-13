@@ -74,6 +74,7 @@ window.initManageStation = function(stationId) {
             updateHeader(currentStation.name, currentStation.code);
             enableStationEditing();
         }
+        document.getElementById('drawing-controls').classList.remove('hidden');
     }
     updatePolygonButtons();
     renderSidebar();
@@ -86,8 +87,23 @@ function updateHeader(name, code) {
 
 
 window.saveStationChangesAndClose = function() {
-    const name = document.getElementById('station-name-input-sidebar').value, code = document.getElementById('station-code-input-sidebar').value;
-    if (!name || !code) { alert("Name and Code are required."); return; }
+    const nameInput = document.getElementById('station-name-input-sidebar');
+    const codeInput = document.getElementById('station-code-input-sidebar');
+
+    if (!nameInput || !codeInput) {
+        console.warn("Sidebar inputs not found. Re-rendering sidebar...");
+        renderSidebar();
+        return;
+    }
+
+    const name = nameInput.value;
+    const code = codeInput.value;
+
+    if (!name || !code) { 
+        window.showToast("Name and Code are required.", true); 
+        return; 
+    }
+    
     if (currentStation) {
         if (saveStationChanges()) { updateHeader(name, code); }
     } else {
@@ -96,8 +112,17 @@ window.saveStationChangesAndClose = function() {
 }
 
 function finalizeStationCreation() {
-    const name = document.getElementById('station-name-input-sidebar').value, code = document.getElementById('station-code-input-sidebar').value;
-    const lat = document.getElementById('new-station-lat').value, lng = document.getElementById('new-station-lng').value, zoom = document.getElementById('new-station-zoom').value;
+    const nameInput = document.getElementById('station-name-input-sidebar');
+    const codeInput = document.getElementById('station-code-input-sidebar');
+    
+    if (!nameInput || !codeInput) return;
+
+    const name = nameInput.value;
+    const code = codeInput.value;
+    
+    const lat = document.getElementById('new-station-lat').value;
+    const lng = document.getElementById('new-station-lng').value;
+    const zoom = document.getElementById('new-station-zoom').value;
     if (!name || !code) { alert('Please enter name and code'); return; }
     const hasPolygon = (polygonLayer !== null) || (drawnItems && drawnItems.getLayers().length > 0);
     if (!hasPolygon) { window.showToast("Add a Polygon First", true); return; }
@@ -142,8 +167,12 @@ function updateLocationDisplay(lat, lng) {
 
 function saveStationChanges() {
     if (!currentStation) return false;
-    currentStation.name = document.getElementById('station-name-input-sidebar').value;
-    currentStation.code = document.getElementById('station-code-input-sidebar').value;
+    
+    const nameInput = document.getElementById('station-name-input-sidebar');
+    const codeInput = document.getElementById('station-code-input-sidebar');
+    
+    if (nameInput) currentStation.name = nameInput.value;
+    if (codeInput) currentStation.code = codeInput.value;
     
     const lat = document.getElementById('new-station-lat').value;
     const lng = document.getElementById('new-station-lng').value;
@@ -224,10 +253,12 @@ function performWizardSearch(query) {
 }
 
 function setupWizardMap(lat, lng) {
-    map.setView([lat, lng], 15); updateLocationDisplay(lat, lng);
+    map.setView([lat, lng], 15); 
+    updateLocationDisplay(lat, lng);
     document.getElementById('location-selection-overlay').classList.add('hidden');
     document.getElementById('drawing-controls').classList.remove('hidden');
     window.updatePolygonButtons();
+    renderSidebar();
 }
 
 function startDrawing(force) {
@@ -239,6 +270,7 @@ function startDrawing(force) {
     });
     polygonLayer = editor.layer;
     window.updatePolygonButtons();
+    renderSidebar();
 }
 
 window.deleteSelectedVertex = function() {
