@@ -1,0 +1,904 @@
+================================================================================
+                         PLATFORM GUIDE - PROJECT DESCRIPTION
+                    Railway Station Navigation & Mapping System
+================================================================================
+
+Project Name     : Platform Guide
+Version          : 1.0
+Type             : Web Application (Client-Side)
+Repository       : platform-guide/
+Author           : Shital Patel
+
+
+================================================================================
+  TABLE OF CONTENTS
+================================================================================
+
+  1. Project Overview
+  2. Problem Statement
+  3. Solution & Vision
+  4. Technology Stack
+  5. Folder & File Structure
+  6. Page-by-Page Breakdown
+     6.1 Home Page (index.html)
+     6.2 Station Boundary Page (station.html)
+     6.3 Platform Mapping Page (platform.html)
+     6.4 Services & POI Page (services.html)
+     6.5 Infrastructure Page (infrastructure.html)
+     6.6 Traveler View / Result Page (result.html)
+  7. Core JavaScript Modules
+     7.1 main.js - Data Management & Navigation
+     7.2 editor-engine.js - Geometry Drawing Engine
+     7.3 home.js - Home Page Renderer
+     7.4 station.js - Station CRUD Logic
+     7.5 platform.js - Platform Drawing & Editing
+     7.6 services.js - Service Placement Logic
+     7.7 infrastructure.js - Infrastructure Mapping
+     7.8 result.js - Traveler View Renderer
+     7.9 tailwind-config.js - Tailwind Theme
+  8. Data Architecture & Storage
+  9. Data Models
+ 10. Map Engine Details
+ 11. Algorithms Used
+ 12. User Interface & Design System
+ 13. Application Workflow (Step-by-Step)
+ 14. External APIs & Services
+ 15. Key Features Summary
+ 16. Known Issues & TODOs
+ 17. Future Roadmap
+
+
+================================================================================
+  1. PROJECT OVERVIEW
+================================================================================
+
+Platform Guide is a web-based mapping tool designed to help railway station
+administrators (or mappers) visually define, organize, and publish the layout
+of a railway station. The output is a fully interactive, read-only "Traveler
+View" that end-users (commuters) can use to navigate platforms, find services
+(like washrooms, ticket counters, and tea stalls), and understand the
+connectivity infrastructure (bridges, foot-over-bridges, walkways, gates).
+
+The application runs entirely in the browser. It does not require any
+backend server, database, or API key for its core functionality. All data
+is stored in the browser's localStorage. The map engine is powered by
+Leaflet.js with CartoDB and OpenRailwayMap tile layers.
+
+
+================================================================================
+  2. PROBLEM STATEMENT
+================================================================================
+
+Indian railway stations are often large, complex, and difficult to navigate
+for first-time or infrequent travelers. Existing map applications (like
+Google Maps) provide satellite imagery but do not label individual platforms,
+services, or connectivity paths within a station.
+
+Travelers often struggle to:
+  - Identify which platform their train departs from.
+  - Locate washrooms, water coolers, ticket counters on a specific platform.
+  - Find foot-over-bridges or walkways connecting multiple platforms.
+  - Locate the correct entry/exit gate.
+
+Station administrators lack a simple tool to digitize their station layout
+and publish it online.
+
+
+================================================================================
+  3. SOLUTION & VISION
+================================================================================
+
+Platform Guide solves this by providing:
+
+  A) A multi-step ADMIN workflow to map a station:
+     Step 1: Define the geographical boundary of the station.
+     Step 2: Draw polygons for each platform inside that boundary.
+     Step 3: Place service markers (washrooms, shops, etc) on platforms.
+     Step 4: Draw infrastructure paths (bridges, gates, walkways).
+     Step 5: Preview the completed map as a "Traveler View".
+
+  B) A read-only TRAVELER VIEW where commuters can:
+     - Browse all platforms.
+     - Search for services and infrastructure.
+     - Filter by category (Platforms / Services / Infrastructure).
+     - Click on any item to get details and recenter the map.
+     - See distance from their current location (if enabled).
+
+The vision is to eventually serve this as a mobile-friendly web app that can
+be accessed by scanning a QR code at the station entrance.
+
+
+================================================================================
+  4. TECHNOLOGY STACK
+================================================================================
+
+  Category          | Technology                  | Purpose
+  ------------------|-----------------------------|-----------------------------
+  Markup            | HTML5                       | Page structure
+  Styling           | Tailwind CSS (CDN v3)       | Utility-first CSS framework
+  Custom Styles     | styles/main.css             | Custom overrides & animations
+  Map Overrides     | styles/leaflet-overrides.css | Leaflet CSS customizations
+  Icons             | Font Awesome 6.4            | UI icons
+  Typography        | Google Fonts (Inter)        | Modern sans-serif font
+  Map Engine        | Leaflet.js 1.9.4            | Interactive map rendering
+  Drawing Plugin    | Leaflet.Draw 1.0.4          | Polygon drawing (station.html)
+  Logic             | Vanilla JavaScript (ES6+)   | Application logic
+  Data Storage      | Browser localStorage        | Persistent client-side storage
+  Geocoding API     | Nominatim (OpenStreetMap)    | Location search
+  Map Tiles         | CartoDB Light               | Base map tiles
+  Railway Tiles     | OpenRailwayMap              | Railway track overlay
+  POI Discovery     | Overpass API (OSM)           | Fetch nearby amenities
+
+
+================================================================================
+  5. FOLDER & FILE STRUCTURE
+================================================================================
+
+  d:\platform-guide\
+  |
+  |-- index.html                 Home page (station list dashboard)
+  |-- station.html               Station boundary creation/editing
+  |-- platform.html              Platform polygon drawing/editing
+  |-- services.html              Service/POI marker placement
+  |-- infrastructure.html        Infrastructure (bridges, gates) mapping
+  |-- result.html                Traveler View (read-only map)
+  |-- readme.md                  Developer notes & current issues
+  |-- .gitignore                 Git ignore rules
+  |
+  |-- script/
+  |   |-- main.js                Data storage, GeoFilter, WorkspaceNavigation
+  |   |-- editor-engine.js       GeometryEditor class (polygon/polyline editing)
+  |   |-- home.js                Home page station grid renderer
+  |   |-- station.js             Station CRUD and map setup logic
+  |   |-- platform.js            Platform drawing, vertex editing, saving
+  |   |-- services.js            Service placement, OSM fetch, drag-n-drop
+  |   |-- infrastructure.js      Bridge/gate drawing, branch management
+  |   |-- result.js              Traveler View rendering, filtering, search
+  |   |-- tailwind-config.js     Custom Tailwind theme configuration
+  |
+  |-- styles/
+  |   |-- main.css               Custom CSS styles and animations
+  |   |-- leaflet-overrides.css  Leaflet default style overrides
+  |
+  |-- .git/                      Git version control
+
+
+================================================================================
+  6. PAGE-BY-PAGE BREAKDOWN
+================================================================================
+
+  6.1 HOME PAGE (index.html)
+  --------------------------
+  Entry Point: This is the landing page of the application.
+
+  Purpose:
+    - Displays a visual grid/list of all saved railway stations.
+    - Each station card shows: Station Name, Station Code, Platform Count,
+      and quick-action links to Platforms, Services, Infrastructure pages.
+    - A "Live View" button opens the Traveler View for that station.
+    - An "Add New Station" button (in navbar + grid) routes to station.html.
+
+  Scripts Used: main.js, home.js
+
+  Key Functions (home.js):
+    - initHomePage(): Reads stations from localStorage, generates station
+      cards dynamically, and renders them into the #station-grid div.
+    - Shows an "empty state" UI if no stations exist.
+
+  UI Elements:
+    - Sticky navbar with Platform Guide branding and "Add New Station" CTA
+    - Station cards with hover effects, animated slide-up entry
+    - Quick-action buttons: Platforms | Services | Infra | Live View
+    - Dashed "Add New Station" card at the bottom of the grid
+
+
+  6.2 STATION BOUNDARY PAGE (station.html)
+  -----------------------------------------
+  Purpose:
+    - Create a new station or edit an existing one.
+    - Define the station's geographical boundary as a polygon on the map.
+    - Set station Name and Code.
+
+  Scripts Used: main.js, editor-engine.js, station.js
+
+  Workflow (New Station):
+    1. A full-screen overlay asks "Where is the station?"
+    2. User can search by city name, pick a predefined location (Amravati,
+       Badnera, Dhamangaon, Nagpur), or use GPS geolocation.
+    3. The map centers on the selected location.
+    4. A small default polygon appears at the map center.
+    5. User drags vertices to shape the station boundary.
+    6. User clicks "Save" → a sidebar form asks for Name and Code.
+    7. Station is saved to localStorage and the page reloads in edit mode.
+
+  Workflow (Edit Station):
+    1. The existing station boundary polygon loads on the map.
+    2. The GeometryEditor activates, allowing vertex dragging and midpoint
+       insertion (click midpoint markers to add new vertices).
+    3. Double-click a vertex to delete it.
+    4. The sidebar shows current Name, Code, and Coordinates.
+    5. User can rename, change code, reshape polygon, or delete the station.
+    6. Click "Save & Sync Station" to persist changes.
+
+  Key Features:
+    - Location search via Nominatim geocoding API
+    - OpenRailwayMap tile overlay to see railway tracks
+    - Interactive polygon editing with rubber-band vertices
+    - Recenter button to fly back to station bounds
+    - Toast notifications for success/error feedback
+    - Delete station with confirmation dialog
+
+
+  6.3 PLATFORM MAPPING PAGE (platform.html)
+  -------------------------------------------
+  Purpose:
+    - Draw polygons to represent individual platforms within a station.
+    - Each platform gets a name/number.
+
+  Scripts Used: main.js, platform.js
+
+  Layout:
+    - Full-height layout with map on the left and sidebar on the right.
+    - Station boundary is displayed as a dashed, non-interactive outline.
+    - All existing platforms are rendered as grey filled polygons with
+      permanent name labels centered on each polygon.
+
+  Workflow:
+    1. Click "Add Poly" in the bottom toolbar.
+    2. A small rectangular polygon appears at the center of the map.
+    3. Drag vertices to position the platform shape precisely.
+    4. Click midpoint markers (+) between vertices to add more detail.
+    5. Double-click a vertex to select it for deletion.
+    6. Click "Save" → a modal asks for the Platform Name/Number.
+    7. Enter name (e.g., "Platform 1") and click "Save Platform".
+
+  Sidebar Modes:
+    A) List Mode (default): Shows all platforms in a searchable list.
+       Click a platform to select and edit it.
+    B) Detail/Edit Mode: Shows the selected platform name, editing tips,
+       and quick actions (Recenter, Save Details, Delete, Stop).
+
+  Key Features:
+    - Manual vertex-based polygon editing (no Leaflet.Draw dependency)
+    - Platform search/filter in sidebar
+    - Hover effects on static platform polygons
+    - Click platform on map or sidebar to enter edit mode
+    - Keyboard shortcut: Escape to cancel editing
+    - Unsaved changes confirmation dialog
+
+
+  6.4 SERVICES & POI PAGE (services.html)
+  -----------------------------------------
+  Purpose:
+    - Place service/amenity markers directly on the map.
+    - Services are associated with platforms via geometric containment.
+
+  Scripts Used: main.js, services.js
+
+  Available Service Types (8 total):
+    1. Washroom          (fa-restroom)
+    2. Water Cooler       (fa-glass-water)
+    3. Grocery / Shop     (fa-store)
+    4. Tea / Coffee Stall (fa-mug-hot)
+    5. Waiting Area       (fa-chair)
+    6. Charging Point     (fa-plug)
+    7. Ticket Counter     (fa-ticket)
+    8. Information Desk   (fa-circle-info)
+
+  Workflow:
+    1. The sidebar shows a grid of 8 service type icons.
+    2. Click a service type → enters "placement mode".
+    3. The sidebar shows "CLICK ON MAP TO PLACE" with a pulsing indicator.
+    4. Click anywhere on the map to drop a service marker.
+    5. The system automatically detects if the click is inside a platform
+       polygon (using the GeoFilter.isPointInPolygon algorithm).
+    6. If inside a platform, the service is tagged to that platform.
+       If outside, it is tagged as "On Ground".
+    7. The service marker is draggable. On drag-end, platform association
+       is recalculated.
+    8. Click "SAVE ALL CHANGES" to persist to localStorage.
+
+  Additional Feature - OSM Service Fetching:
+    - On page load, the app calls the Overpass API to fetch nearby OSM
+      amenities (toilets, drinking water, shops, charging stations).
+    - OSM services that fall inside any platform polygon are rendered
+      as emoji markers on the map.
+
+  Sidebar Content:
+    - Service Placement panel with icon grid or placement indicator
+    - "Active Services" list showing each placed service with its type,
+      platform association, and delete button
+    - "Save All Changes" and "Recenter View" action buttons
+
+
+  6.5 INFRASTRUCTURE PAGE (infrastructure.html)
+  -----------------------------------------------
+  Purpose:
+    - Map out connectivity infrastructure like foot-over-bridges,
+      walkways, station entries/exits, concourses, and transport hubs.
+
+  Scripts Used: main.js, editor-engine.js, infrastructure.js
+
+  Infrastructure Types:
+    1. Bridge / FOB      (polyline)  - Foot Over Bridge connecting platforms
+    2. Transit Path      (polyline)  - Walkway or underground path
+    3. Station Entry     (marker)    - Entry gate
+    4. Station Exit      (marker)    - Exit gate
+    5. Concourse         (marker)    - Waiting hall
+    6. Transport Hub     (marker)    - Taxi/auto stand
+
+  Workflow (Line-based: Bridge/Path):
+    1. Click "Add Path" to start drawing.
+    2. The GeometryEditor creates a default 2-point polyline.
+    3. Drag endpoints and add midpoints to shape the path.
+    4. The sidebar shows the editing form with:
+       - Label Name input
+       - Item Type dropdown
+       - Branch management (Add Exit/Stair to create sub-paths)
+       - "Detected Connections" showing which platforms the path
+         passes through (auto-detected via GeoFilter)
+    5. Click "Update & Sync" to save.
+
+  Workflow (Marker-based: Gate/Entry):
+    1. Click "Add Gate" to enter placement mode.
+    2. Click on the map to place a draggable gate marker.
+    3. Fill in the label and type in the sidebar form.
+    4. Click "Update & Sync" to save.
+
+  Branch System:
+    - A bridge or path can have multiple branches (sub-paths).
+    - Click "Add Exit/Stair" to commit the current path and start
+      a new branch polyline.
+    - All branches are stored as arrays of coordinate arrays.
+    - Branches render as dashed lines on the map.
+
+  Connection Intelligence:
+    - As you draw or edit a path, the app checks in real-time which
+      platform polygons the path endpoints intersect.
+    - Connected platform names are shown as tagged pills in the sidebar
+      under "Detected Connections".
+
+
+  6.6 TRAVELER VIEW / RESULT PAGE (result.html)
+  -----------------------------------------------
+  Purpose:
+    - A read-only, consumer-facing view of the fully mapped station.
+    - Designed for commuters to browse and search the station layout.
+
+  Scripts Used: main.js, result.js
+
+  Layout:
+    - Sidebar on the LEFT with search, filter chips, and item list.
+    - Map on the RIGHT showing all platforms, services, and infra.
+    - Map legend in the bottom-right corner.
+    - Zoom controls and "Fit All" button in the top-right corner.
+
+  Features:
+    - Search Bar: Real-time filtering across all platforms, services,
+      and infrastructure by name.
+    - Filter Chips: All | Platforms | Services | Infrastructure
+    - Sidebar Item List: Grouped sections for Platforms, Facilities,
+      and Infrastructure with clickable cards.
+    - Detail View: Clicking any item in the sidebar or on the map
+      shows a detailed panel with the item's name, type, icon,
+      and a "Recenter" button.
+    - User Location: If the browser provides GPS, a pulsing blue dot
+      shows the user's position. Distance to selected items is
+      calculated and displayed.
+    - Platform Labels: Permanent tooltip labels centered on each
+      platform polygon.
+    - Service Markers: Interactive circular icons with hover labels.
+    - Infrastructure: Polylines for bridges/paths, circle markers for
+      gates and entries.
+
+  Filtering Logic:
+    - Each filter chip updates activeFilter state.
+    - renderAll() re-renders map layers and sidebar list based on
+      the current activeFilter and searchQuery.
+    - Items not matching the filter are either hidden or shown with
+      reduced opacity.
+
+
+================================================================================
+  7. CORE JAVASCRIPT MODULES
+================================================================================
+
+  7.1 main.js - Data Management & Navigation
+  -------------------------------------------
+  Lines: ~231 | Size: ~12 KB
+
+  This is the shared backbone script loaded on EVERY page.
+
+  Components:
+
+  A) Storage Object:
+     A unified interface for localStorage CRUD operations.
+     Methods:
+       - getStations() / saveStations()
+       - addStation() / updateStation() / deleteStation()
+       - getStationById()
+       - getPlatforms() / savePlatforms() / addPlatform()
+       - getPlatformsByStationId()
+       - getInfrastructure() / saveInfrastructure() / addInfrastructure()
+       - getInfrastructureByStationId()
+       - getServices() / saveServices()
+       - getServicesByStationId()
+
+     When a station is deleted, it cascades: all associated platforms,
+     infrastructure, and services are also removed.
+
+  B) GeoFilter Object:
+     Hand-coded computational geometry algorithms:
+       - isPointInPolygon(point, polygon): Ray Casting algorithm to
+         determine if a point falls inside a polygon.
+       - doSegmentsIntersect(p1, q1, p2, q2): Orientation-based segment
+         intersection test using determinant calculations.
+
+  C) WorkspaceNavigation Object:
+     A dynamic navigation hub injected into the navbar of every page
+     (except index.html and result.html).
+     Features:
+       - Dropdown menu to switch between Station, Platforms,
+         Infrastructure, Services, and Traveler View pages.
+       - Highlights the currently active page.
+       - Uses color-coded icons for each workspace.
+       - Click-outside-to-close behavior.
+
+
+  7.2 editor-engine.js - Geometry Drawing Engine
+  -----------------------------------------------
+  Lines: ~206 | Size: ~7 KB
+
+  The GeometryEditor class is a reusable drawing engine for creating
+  and editing polygons and polylines directly on the Leaflet map.
+
+  Used by: station.js (polygon editing), infrastructure.js (polyline editing)
+
+  Features:
+    - Creates a default shape (polygon or polyline) at the map center.
+    - Renders draggable vertex markers (white circles with colored border).
+    - Renders draggable midpoint markers (+ icons) between vertices.
+    - Drag a vertex → shape updates in real-time (rubber-band effect).
+    - Drag a midpoint → inserts a new vertex at that position.
+    - Double-click a vertex → removes it (min 3 for polygon, 2 for polyline).
+    - Supports an onUpdate callback for external state synchronization.
+
+  Methods:
+    - init(options): Creates a new default shape with specified options.
+    - initWithData(latlngs, options): Loads an existing shape for editing.
+    - createLayer(latlngs): Creates the Leaflet polygon/polyline layer.
+    - render(): Clears and re-renders all vertex and midpoint markers.
+    - addVertex(idx, latlng): Inserts a vertex at a specific index.
+    - removeVertex(idx): Removes a vertex at a specific index.
+    - getLatlngs(): Returns a copy of the current coordinates.
+    - setLatlngs(latlngs): Updates the underlying Leaflet layer coordinates.
+    - clearMarkers(): Removes all marker overlays.
+    - reset(): Fully destroys the editor state and layer.
+
+
+  7.3 home.js - Home Page Renderer
+  ---------------------------------
+  Lines: ~92 | Size: ~6.6 KB
+
+  Renders the station grid on the home page. Dynamically creates
+  station cards with animated slide-up effects and quick-action buttons.
+
+
+  7.4 station.js - Station CRUD Logic
+  ------------------------------------
+  Lines: ~375 | Size: ~17.5 KB
+
+  Manages station creation, editing, saving, and deletion.
+
+  Key Functions:
+    - initManageStation(stationId): Initializes the page for new/edit mode.
+    - finalizeStationCreation(): Creates a new station record.
+    - saveStationChanges(): Updates an existing station.
+    - deleteStation(): Removes station and all associated data.
+    - enableStationEditing(): Activates the GeometryEditor on the polygon.
+    - handleSearch(event) / searchLocation(): Nominatim geocoding search.
+    - selectPredefinedLocation(city): Quick-jump to hardcoded city coords.
+    - useCurrentLocation(): Browser geolocation API.
+    - renderSidebar(): Renders the editing form in the sidebar.
+    - showToast(msg, isErr): Toast notification utility.
+
+
+  7.5 platform.js - Platform Drawing & Editing
+  ----------------------------------------------
+  Lines: ~397 | Size: ~19.2 KB
+
+  Self-contained platform drawing system (does NOT use GeometryEditor).
+
+  Key Functions:
+    - renderAllStaticPlatforms(): Renders all saved platforms as grey polys.
+    - addPlatformPolygon(): Creates a new editable platform shape.
+    - selectPlatform(id): Loads a saved platform for editing.
+    - renderPlatformVertices(): Creates draggable vertex/midpoint markers.
+    - confirmSavePlatform(): Saves the platform to localStorage.
+    - deleteCurrentPlatform(): Removes a platform.
+    - handlePlatformSearch(query): Filters the sidebar list.
+    - togglePlatformDetailsModal(): Opens/closes the save dialog.
+
+
+  7.6 services.js - Service Placement Logic
+  -------------------------------------------
+  Lines: ~360 | Size: ~17.2 KB
+
+  Manages service marker placement and OSM integration.
+
+  Key Functions:
+    - startPlacingService(type): Enters placement mode for a service type.
+    - renderServiceMarkers(): Renders all service markers (draggable).
+    - deleteService(index): Removes a service from the list.
+    - saveAllServices(): Persists all services to localStorage.
+    - fetchOSMServices(): Calls Overpass API for nearby amenities.
+    - renderOSMServices(): Renders OSM data as emoji markers.
+
+  Data Migration:
+    - Contains a migration script that converts old platform-embedded
+      services to the new station-wide services storage format.
+
+
+  7.7 infrastructure.js - Infrastructure Mapping
+  ------------------------------------------------
+  Lines: ~425 | Size: ~18.8 KB
+
+  Manages bridges, paths, gates, and other infrastructure items.
+
+  Key Functions:
+    - startDrawingLine(): Initializes GeometryEditor for polyline drawing.
+    - startPlacingMarker(): Enters marker placement mode.
+    - createMarkerInfra(latlng): Places a draggable gate marker.
+    - selectInfra(id): Loads an existing infra item for editing.
+    - confirmSaveInfra(): Saves the infrastructure item.
+    - deleteCurrentInfra(): Removes an infrastructure item.
+    - addBridgeBranch(): Commits current path and starts a new branch.
+    - removeBranch(idx): Deletes a specific branch.
+    - updateConnectionUI(): Real-time platform connection detection.
+
+
+  7.8 result.js - Traveler View Renderer
+  ----------------------------------------
+  Lines: ~520 | Size: ~29.9 KB (largest script)
+
+  The most complex script, rendering the complete read-only view.
+
+  Key Functions:
+    - initUI(): Sets station name/code in the header.
+    - initMap(): Creates the Leaflet map with all feature groups.
+    - renderAll(): Master renderer for platforms, services, and infra.
+    - updateSidebarList(): Renders the filtered/searchable item list.
+    - renderDetailView(): Renders the detail panel for a selected item.
+    - handleSearch(val): Text search across all item types.
+    - setFilter(filter): Toggles filter chips (All/Platforms/Services/etc).
+    - selectItem(type, id): Highlights and recenters to a specific item.
+    - recenterToItem(type, id): Flies/fits the map to a specific item.
+    - deselectItem(): Returns to list view.
+    - fitAll(): Fits the map to show all platforms.
+    - updateUserLocation(lat, lng): Renders user's GPS position.
+
+
+  7.9 tailwind-config.js - Tailwind Theme Configuration
+  ------------------------------------------------------
+  Lines: ~14 | Size: ~280 bytes
+
+  Extends the default Tailwind configuration with:
+    - Font family: Inter (sans-serif)
+    - Primary color: #2563EB (Blue 600)
+    - Secondary color: #1E40AF (Blue 800)
+
+
+================================================================================
+  8. DATA ARCHITECTURE & STORAGE
+================================================================================
+
+  All application data is stored in the browser's localStorage using
+  JSON serialization. There are four main storage keys:
+
+  Key               | Contents
+  ------------------|--------------------------------------------------
+  "stations"        | Array of Station objects
+  "platforms"       | Array of Platform objects (linked via stationId)
+  "infrastructure"  | Array of Infrastructure objects (linked via stationId)
+  "services"        | Array of Service objects (linked via stationId + platformId)
+
+  Data Relationships:
+    Station (1) ──── (N) Platform
+    Station (1) ──── (N) Infrastructure
+    Station (1) ──── (N) Service
+    Platform (1) ──── (N) Service  (via platformId, auto-detected)
+
+  Cascade Delete:
+    When a station is deleted → all related platforms, infrastructure,
+    and services are also removed from localStorage.
+
+
+================================================================================
+  9. DATA MODELS
+================================================================================
+
+  Station Object:
+    {
+      id:       "1711234567890"       // Timestamp-based unique ID
+      name:     "Amravati Junction"   // Station name
+      code:     "AMT"                 // Station code (uppercase)
+      lat:      20.9319               // Center latitude
+      lng:      77.7523               // Center longitude
+      zoom:     15                    // Default map zoom level
+      geojson:  { ... }              // GeoJSON Feature (Polygon)
+    }
+
+  Platform Object:
+    {
+      id:        "1711234600000"       // Unique ID
+      stationId: "1711234567890"       // Parent station reference
+      name:      "Platform 1"         // Platform name/number
+      geojson:   { ... }             // GeoJSON Feature (Polygon)
+    }
+
+  Service Object:
+    {
+      id:         "srv_1711234700000"  // Prefixed unique ID
+      stationId:  "1711234567890"      // Parent station reference
+      platformId: "1711234600000"      // Platform reference (or null)
+      type:       "washroom"           // Service type key
+      lat:        20.9322              // Marker latitude
+      lng:        77.7520              // Marker longitude
+    }
+
+  Infrastructure Object (Line type):
+    {
+      id:        "1711234800000"       // Unique ID
+      stationId: "1711234567890"       // Parent station reference
+      name:      "Main FOB"           // Label
+      type:      "bridge"             // bridge | path
+      latlngs:   [[lat,lng], ...]     // Main path coordinates
+      branches:  [[[lat,lng], ...]]   // Array of branch paths
+    }
+
+  Infrastructure Object (Marker type):
+    {
+      id:        "1711234900000"       // Unique ID
+      stationId: "1711234567890"       // Parent station reference
+      name:      "East Gate"          // Label
+      type:      "entry"              // entry | exit | concourse | transport_hub
+      latlng:    [lat, lng]           // Single point coordinate
+    }
+
+
+================================================================================
+  10. MAP ENGINE DETAILS
+================================================================================
+
+  Map Library: Leaflet.js v1.9.4
+
+  Tile Layers (stacked):
+    1. CartoDB Light (base):
+       URL: https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png
+       Purpose: Clean, minimal base map for professional appearance.
+
+    2. OpenRailwayMap (overlay):
+       URL: https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png
+       Purpose: Shows railway tracks, signals, and rail infrastructure.
+
+  Map Configuration:
+    - zoomControl: false (custom zoom buttons used instead)
+    - maxZoom: 22-24 (page-dependent for detail levels)
+    - Default view: India center [20.5937, 78.9629] at zoom 5 (new stations)
+
+  Feature Groups (per page):
+    - Each page creates L.FeatureGroup instances to organize layers:
+      * Station boundary group (non-interactive, dashed outline)
+      * Platforms group (interactive polygons with tooltips)
+      * Services group (draggable markers)
+      * Infrastructure group (polylines and point markers)
+
+
+================================================================================
+  11. ALGORITHMS USED
+================================================================================
+
+  A) Ray Casting Algorithm (Point in Polygon):
+     Located in: main.js → GeoFilter.isPointInPolygon()
+     Purpose: Determines if a geographic point (lat/lng) falls inside
+     a polygon (station boundary or platform shape).
+
+     How it works:
+       - Casts a horizontal ray from the test point to infinity.
+       - Counts how many polygon edges the ray crosses.
+       - If the crossing count is odd → point is inside.
+       - If even → point is outside.
+
+     Used by:
+       - services.js: Auto-detecting which platform a service belongs to.
+       - infrastructure.js: Detecting which platforms a bridge connects.
+       - result.js: Filtering OSM data to show only relevant amenities.
+
+  B) Segment Intersection (Orientation Test):
+     Located in: main.js → GeoFilter.doSegmentsIntersect()
+     Purpose: Checks if two line segments intersect.
+
+     How it works:
+       - Computes the orientation of triplets of points.
+       - Uses the cross-product formula to determine left/right turns.
+       - If two segments have opposite orientations → they intersect.
+
+
+================================================================================
+  12. USER INTERFACE & DESIGN SYSTEM
+================================================================================
+
+  Design Language:
+    - Clean, modern, minimalist aesthetic.
+    - White backgrounds with subtle gray borders and shadows.
+    - Blue (#2563EB) as the primary accent color.
+    - Purple accents for platform-related UI.
+    - Orange accents for infrastructure-related UI.
+    - Indigo accents for services-related UI.
+
+  Typography:
+    - Font: Inter (Google Fonts)
+    - Weights: 300 (Light) through 700 (Bold)
+    - Heavy use of uppercase tracking-wide micro-labels.
+
+  Animation & Interaction:
+    - animate-slide-up: Card entry animation on home page.
+    - animate-fade-in: Page content fade-in.
+    - group-hover effects: Button and card hover state changes.
+    - transition-all: Smooth color and scale transitions throughout.
+    - Toast Notifications: Green (success) / Red (error) popups.
+    - Backdrop blur modals for platform save dialogs.
+
+  Layout Pattern:
+    - Home page: Centered content container with max-w-7xl.
+    - All other pages: Full-height flex layout with:
+      * Map (flex-grow) filling the main area.
+      * Sidebar (fixed width 72-80 units) on the right.
+      * Bottom toolbar for drawing controls.
+    - Result page: Sidebar on the LEFT, map on the RIGHT.
+
+  Responsive Considerations:
+    - Some flex-row/flex-col responsive switches for mobile.
+    - Sidebar widths are fixed but could be improved for mobile.
+    - Search bars are hidden on smaller screens (sm: breakpoint).
+
+
+================================================================================
+  13. APPLICATION WORKFLOW (STEP-BY-STEP)
+================================================================================
+
+  Full workflow from start to finish:
+
+  1. Open index.html → Empty state, click "Add New Station".
+  2. Redirected to station.html?new=true.
+  3. Choose a location (search, predefined, or GPS).
+  4. Map zooms to location. Draw a polygon for the station area.
+  5. Fill in Station Name and Code in the sidebar. Click Save.
+  6. Station is saved. Page reloads in edit mode.
+  7. Use the WorkspaceNavigation dropdown → click "Platform Mapping".
+  8. Redirected to platform.html?id=<stationId>.
+  9. Station boundary appears as dashed outline.
+  10. Click "Add Poly" → draw a rectangle for Platform 1.
+  11. Click "Save" → enter "Platform 1" → Save Platform.
+  12. Repeat for Platform 2, 3, etc.
+  13. Use WorkspaceNavigation → click "Services & POI".
+  14. Redirected to services.html?id=<stationId>.
+  15. All platforms appear with name labels. OSM data loads.
+  16. Click "Washroom" icon → click on Platform 1 polygon → marker placed.
+  17. Click "Ticket Counter" → click on Platform 2 → marker placed.
+  18. Click "SAVE ALL CHANGES".
+  19. Use WorkspaceNavigation → click "Infrastructure".
+  20. Redirected to infrastructure.html?id=<stationId>.
+  21. Click "Add Path" → draw a polyline across Platform 1 and 2.
+  22. Name it "Main FOB", type "Bridge / FOB". Save.
+  23. Click "Add Gate" → place a marker at the south entrance.
+  24. Name it "South Gate", type "Station Entry". Save.
+  25. Use WorkspaceNavigation → click "TRAVELER VIEW".
+  26. result.html opens in a new tab showing the complete station.
+  27. Traveler can search, filter, click items, and get directions.
+
+
+================================================================================
+  14. EXTERNAL APIs & SERVICES
+================================================================================
+
+  A) Nominatim Geocoding API (OpenStreetMap):
+     Endpoint: https://nominatim.openstreetmap.org/search
+     Usage: station.js → searchLocation() and searchLocationWizard()
+     Purpose: Convert city/area names to lat/lng coordinates.
+     Rate Limit: Free, but limited to 1 request per second.
+
+  B) Overpass API (OpenStreetMap):
+     Endpoint: https://overpass-api.de/api/interpreter
+     Usage: services.js → fetchOSMServices()
+     Purpose: Fetch nearby amenities (toilets, water, shops, charging)
+     within the station bounding box.
+     Query: Custom Overpass QL with node filters and bounding box.
+
+  C) CartoDB Basemap Tiles:
+     URL: https://{s}.basemaps.cartocdn.com/light_all/...
+     Usage: All map pages.
+     Purpose: Clean, light grey basemap tiles.
+
+  D) OpenRailwayMap Tiles:
+     URL: https://{s}.tiles.openrailwaymap.org/standard/...
+     Usage: All map pages.
+     Purpose: Railway track overlay for precise station mapping.
+
+
+================================================================================
+  15. KEY FEATURES SUMMARY
+================================================================================
+
+  Admin Features:
+    [x] Create, edit, delete railway stations
+    [x] Draw station boundary as polygon on map
+    [x] Draw platform polygons inside station boundary
+    [x] Place service markers (8 types) with auto-platform detection
+    [x] Draw infrastructure paths (bridges, walkways)
+    [x] Place point markers (gates, entries, exits)
+    [x] Branch management for complex bridges
+    [x] Real-time connection detection (which platforms a path connects)
+    [x] Drag-and-drop service marker repositioning
+    [x] OSM amenity discovery within station area
+    [x] Workspace navigation (quick switch between pages)
+    [x] Location search via geocoding
+    [x] Predefined city quick-jump
+    [x] GPS geolocation support
+    [x] Toast notification system
+
+  Traveler Features:
+    [x] Read-only interactive station map
+    [x] Search across all platforms, services, and infrastructure
+    [x] Category filter chips (All / Platforms / Services / Infra)
+    [x] Click-to-select and recenter to any item
+    [x] Detail view with item info and recenter button
+    [x] User location tracking with distance calculation
+    [x] Map legend
+    [x] Zoom controls and "Fit All" button
+
+
+================================================================================
+  16. KNOWN ISSUES & TODOs
+================================================================================
+
+  From readme.md:
+    1. Edit station: Currently only updates name and code, does not
+       properly re-edit the station polygon shape and marker.
+    2. Extra zoom-in/zoom-out buttons visible outside of edit mode
+       on station.html (should only appear during shape editing).
+    3. UI consistency: station.html has improved UI but other pages
+       (platform.html, etc.) need similar polish.
+
+  Additional observations:
+    4. No backend/database: All data is in localStorage, meaning
+       data is lost if the browser storage is cleared.
+    5. No authentication or multi-user support.
+    6. Limited error handling in some edge cases.
+    7. Mobile responsiveness could be improved (sidebars are fixed width).
+    8. result.js has a reference to undefined `extraData` variable
+       in the recenterToItem function (potential bug).
+
+
+================================================================================
+  17. FUTURE ROADMAP
+================================================================================
+
+  Potential enhancements:
+    - Backend API (Flask/Node.js) with database (MongoDB/PostgreSQL).
+    - User authentication for admin vs traveler roles.
+    - QR code generation for station links.
+    - Mobile-first responsive design.
+    - Real-time train schedule integration.
+    - Accessibility features (screen reader support, high contrast).
+    - Multi-language support (Hindi, Marathi, English).
+    - Indoor navigation with floor plans.
+    - Export station data as JSON/GeoJSON files.
+    - Import/export for station sharing between admins.
+    - Progressive Web App (PWA) for offline access.
+    - AR (Augmented Reality) navigation overlay.
+
+
+================================================================================
+                           END OF PROJECT DESCRIPTION
+================================================================================
