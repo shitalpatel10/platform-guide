@@ -1,7 +1,25 @@
-/* Leaflet Map Customization */
 .leaflet-container {
     font-family: 'Inter', sans-serif !important;
     background: #f8fafc !important;
+}
+
+/* Fix for white grid lines between tiles (grid lines) */
+.leaflet-tile-container img {
+    /* Force hardware acceleration and sub-pixel rounding fix */
+    outline: 1px solid transparent;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    /* Prevent sub-pixel gaps on some browsers */
+    image-rendering: -webkit-optimize-contrast;
+}
+
+/* Prevent Tailwind CSS reset from breaking Leaflet tiles */
+.leaflet-container img.leaflet-tile {
+    max-width: none !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Custom Leaflet Controls */
